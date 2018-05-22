@@ -20,10 +20,14 @@ MKT_MIN_NOFQ = 'ElementaryFactor/mkt_1min_NoFQ'
 CAP_STRUCT = 'ElementaryFactor/cap_struct'
 # 主要财务指标相对目录
 FIN_BASIC_DATA_PATH = 'ElementaryFactor/fin_data/fin_data_basics'
+# 财务报表摘要相对目录
+FIN_SUMMARY_DATA_PATH = 'ElementaryFactor/fin_data/fin_data_cwbbzy'
 # 个股行业分类相对目录
 INDUSTRY_CLASSIFY_DATA_PATH = 'ElementaryFactor/industry_classify'
 # 个股IPO信息数据相对目录
 IPO_INFO_PATH = 'ElementaryFactor/ipo_info'
+# 一致预期数据相对目录
+CONSENSUS_PATH = 'ElementaryFactor/consensus_data'
 
 # 日行情复权数据的表头
 MKT_DAILY_FQ_HEADER = ['code', 'date', 'open', 'high', 'low', 'close', 'vol', 'amount', 'turnover1', 'turnover2', 'factor']
@@ -39,6 +43,14 @@ FIN_BASIC_DATA_HEADER = ['ReportDate', 'BasicEPS', 'UnitNetAsset', 'UnitNetOpera
                          'MainOperateProfit', 'OperateProfit', 'InvestIncome', 'NonOperateNetIncome', 'TotalProfit',
                          'NetProfit', 'DeductedNetProfit', 'NetOperateCashFlow', 'CashEquivalentsChg', 'TotalAsset',
                          'CurrentAsset', 'TotalLiability', 'CurrentLiability', 'ShareHolderEquity', 'ROE']
+# 财务报表摘要的表头
+FIN_SUMMARY_DATA_HEADER = ['ReportDate', 'OperatingIncome', 'OperatingCost', 'OperatingProfit', 'TotalProfit',
+                           'IncomeTax', 'NetProfit', 'EarningsPerShare', 'Cash', 'AccountsReceivable', 'Inventories',
+                           'TotalCurrentAssets', 'NetFixedAssets', 'TotalAssets', 'TotalCurrentLiabilities',
+                           'TotalNonCurrentLiabilities', 'TotalLiabilities', 'TotalShareholderEquity',
+                           'InitialCashAndCashEquivalentsBalance', 'NetCashFlowsFromOperatingActivities',
+                           'NetCashFlowsFromInvestingActivities', 'NetCashFlowsFromFinancingActivities',
+                           'NetIncreaseInCashAndCashEquivalents', 'FinalCashAndCashEquivalentsBalance']
 
 # 申万行业分类信息表头
 SW_INDUSTRY_CLASSIFY_HEADER = ['ind_code', 'ind_name']

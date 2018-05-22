@@ -69,7 +69,7 @@ class BTOP(Factor):
     @classmethod
     def _calc_factor_loading_proc(cls, code, calc_date, q):
         """
-        用于并行计算因子治安和
+        用于并行计算因子载荷
         Parameters:
         --------
         :param code: str

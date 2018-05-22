@@ -8,8 +8,12 @@
 
 from src.util.dottabledict import DottableDict
 
-# LNCAP风险因子的配置参数
-LNCAP_CT = DottableDict({'db_file': 'RiskFactor/LNCAP/LNCAP',
+# Size风险因子的配置参数
+SIZE_CT = DottableDict({'db_file': 'RiskFactor/Size/Size',
+                        'component': ['LNCAP'],
+                        'weight': {'LNCAP': 1.0}})
+
+LNCAP_CT = DottableDict({'db_file': 'RiskFactor/Size/LNCAP/LNCAP',
                          'listed_days': 180})
 
 # BETA风险因子的配置参数
@@ -50,6 +54,29 @@ NLSIZE_CT = DottableDict({'db_file': 'RiskFactor/NLSIZE/NLSIZE'
 BTOP_CT = DottableDict({'db_file': 'RiskFactor/BTOP/BTOP',
                         'listed_days': 180
                         })
+
+# LIQUIDITY风险因子的配置参数
+LIQUID_CT = DottableDict({'db_file': 'RiskFactor/LIQUIDITY/LIQUIDITY',
+                          'stom_days': 21,
+                          'stom_weight': 0.35,
+                          'stoq_months': 3,
+                          'stoq_weight': 0.35,
+                          'stoa_months': 12,
+                          'stoa_weight': 0.3,
+                          'listed_days': 180
+                          })
+
+# EarningsYield风险因子的配置参数
+EPFWD_CT = DottableDict({'db_file': 'RiskFactor/EarningsYield/EPFWD/EPFWD',
+                         'listed_days': 0})
+CETOP_CT = DottableDict({'db_file': 'RiskFactor/EarningsYield/CETOP/CETOP',
+                         'listed_days': 0})
+ETOP_CT = DottableDict({'db_file': 'RiskFactor/EarningsYield/ETOP/ETOP',
+                        'listed_days': 0})
+EARNINGSYIELD_CT = DottableDict({'db_file': 'RiskFactor/EarningsYield/EarningsYield',
+                                 'component': ['EPFWD', 'CETOP', 'ETOP'],
+                                 'weight': {'EPFWD': 0.68, 'CETOP': 0.21, 'ETOP': 0.11}})
+
 
 if __name__ == '__main__':
     pass

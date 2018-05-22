@@ -28,6 +28,12 @@ class SecuTradingStatus(Enum):
     LimitUp = auto()        # 涨停
     LimitDown = auto()      # 跌停
 
+class ConsensusType(object):
+    """
+    一致预期数据类型
+    """
+    PredictedEarings = auto()       # 预期盈利
+
 
 class Utils(object):
 
@@ -439,13 +445,13 @@ class Utils(object):
     @classmethod
     def get_fin_basic_data(cls, code, report_date):
         """
-        读取个股最新的财务数据
+        读取个股最新的主要财务指标数据
         Parameter:
         --------
         :param code: str
             证券代码，如600000或SH600000
         :param report_date: datetime-like or str
-            日期，格式：YYYY-MM-DD or YYYYMMDD
+            报告期，格式：YYYY-MM-DD or YYYYMMDD
         :return: pd.Series
         --------
             0. ReportDate
@@ -486,7 +492,7 @@ class Utils(object):
     @classmethod
     def get_ttm_fin_basic_data(cls, code, date):
         """
-        读取个股最新ttm财务数据
+        读取个股最新ttm主要财务指标数据
         Parameters:
         --------
         :param code: str
@@ -546,6 +552,109 @@ class Utils(object):
         ttm_fin_basic_data['DeductedNetProfit'] = fin_basic_data1['DeductedNetProfit'] + fin_basic_data2['DeductedNetProfit'] - fin_basic_data3['DeductedNetProfit']
         ttm_fin_basic_data['NetOperateCashFlow'] = fin_basic_data1['NetOperateCashFlow'] + fin_basic_data2['NetOperateCashFlow'] - fin_basic_data3['NetOperateCashFlow']
         return ttm_fin_basic_data
+
+    @classmethod
+    def get_fin_summary_data(cls, code, report_date):
+        """
+        读取个股最新的财务报表摘要数据
+        Parameters:
+        --------
+        :param code: str
+            证券代码, 如SH600000, 600000
+        :param report_date: datetime-like, str
+            报告期, 格式: YYYY-MM-DD or YYYYMMDD
+        :return: pd.Series
+        --------
+            0. ReportDate
+            1. OperatingIncome:营业收入(万元)
+            2. OperatingCost:营业成本(万元)
+            3. OperatingProfit:营业利润(万元)
+            4. TotalProfit:利润总额(万元)
+            5. IncomeTax:所得税费用(万元)
+            6. NetProfit:净利润(万元)
+            7. EarningsPerShare:基本每股收益
+            8. Cash:货币资金(万元)
+            9. AccountsReceivable:应收账款(万元)
+            10. Inventories:存货(万元)
+            11. TotalCurrentAssets:流动资产合计(万元)
+            12. NetFixedAssets:固定资产净额(万元)
+            13. TotalAssets:资产总计(万元)
+            14. TotalCurrentLiabilities:流动负债合计(万元)
+            15. TotalNonCurrentLiabilities:非流动负债合计(万元)
+            16. TotalLiabilities:负债合计(万元)
+            17. TotalShareholderEquity:所有者权益(或股东权益)合计(万元)
+            18. InitialCashAndCashEquivalentsBalance:期初现金及现金等价物余额(万元)
+            19. NetCashFlowsFromOperatingActivities:经营活动产生的现金流量净额(万元)
+            20. NetCashFlowsFromInvestingActivities:投资活动产生的现金流量净额(万元)
+            21. NetCashFlowsFromFinancingActivities:筹资活动产生的现金流量净额(万元)
+            22. NetIncreaseInCashAndCashEquivalents:现金及现金等价物增加额(万元)
+            23. FinalCashAndCashEquivalentsBalance:期末现金及现金等价物余额(万元)
+            读取失败, 返回None
+        """
+        code = cls.code_to_symbol(code)
+        date = cls.to_date(report_date)
+        if not cls.is_fin_report_date(date):
+            return None
+        fin_summary_data_path = os.path.join(ct.DB_PATH, ct.FIN_SUMMARY_DATA_PATH, '%s.csv' % code)
+        df_fin_summary_data = pd.read_csv(fin_summary_data_path, na_values='--', parse_dates=[0],
+                                          names=ct.FIN_SUMMARY_DATA_HEADER, header=0)
+        fin_summary_data = df_fin_summary_data[df_fin_summary_data.ReportDate == date]
+        if fin_summary_data.shape[0] == 0:
+            return None
+        else:
+            return fin_summary_data.iloc[0]
+
+    @classmethod
+    def get_ttm_fin_summary_data(cls, code, date):
+        """
+        读取个股最新ttm的财务报表摘要数据
+        Parameters:
+        --------
+        :param code: str
+            个股代码, 如SH600000, 600000
+        :param date: datetime-like or str
+            日期, 格式:YYYY-MM-DD or YYYYMMDD
+        :return: pd.Series
+        --------
+        0. ReportDate:报告期
+        1. OperatingIncome:营业收入(万元)
+        2. OperatingCost:营业成本(万元)
+        3. OperatingProfit:营业利润(万元)
+        4. TotalProfit:利润总额(万元)
+        5. NetProfit:净利润(万元)
+        6. EarningsPerShare:基本每股收益
+        7.
+        """
+
+    @classmethod
+    def get_consensus_data(cls, date, code=None, consensus_type=ConsensusType.PredictedEarings):
+        """
+        读取个股指定交易日期的一致预期数据
+        :param date: datetime-like, str
+            交易日期, 格式: YYYY-MM-DD
+        :param code: str
+            个股代码, 如SH600000, 600000
+        :param consensus_type: ConsensusType
+            一致预期数据类型
+        :return:
+            如果code=None, 返回pd.DataFrame, 所有个股的指定一致预期数据
+            如果code<>None, 返回pd.Series, 该指定个股的指定一致预期数据
+        """
+        str_date = Utils.datetimelike_to_str(date, dash=False)
+        if consensus_type == ConsensusType.PredictedEarings:
+            consensus_path = os.path.join(ct.DB_PATH ,ct.CONSENSUS_PATH, '{}/{}_{}.csv'.format('predicted_earnings' ,'predictedearnings', str_date))
+        else:
+            return None
+        df_consensus = pd.read_csv(consensus_path, header=0)
+        if code is None:
+            return df_consensus
+        else:
+            code = cls.code_to_symbol(code)
+            secu_consensus = df_consensus[df_consensus['code'] == code]
+            if secu_consensus.empty:
+                return None
+            else:
+                return secu_consensus.iloc[0]
 
     @classmethod
     def is_fin_report_date(cls, date):
@@ -750,7 +859,7 @@ class Utils(object):
                 DataFrame(dict_factor_loading).to_csv(db_file, index=False, columns=columns)
 
     @classmethod
-    def read_factor_loading(cls, db_file, str_key, nan_value=None):
+    def read_factor_loading(cls, db_file, str_key, code=None, nan_value=None):
         """
         从因子载荷持久化文件中读取指定str_key的因子载荷值
         Parameters
@@ -759,11 +868,13 @@ class Utils(object):
             因子载荷数据文件，绝对路径
         :param str_key: str
             键值，一般为日期，格式为YYYYMMDD
+        :param code: str, 默认为None
+            个股代码, 如SH600000, 600000
         :param nan_value: object, 默认为None
             如果不为None，那么缺失值用nan_value替换
-        :return: DataFrame，因子载荷
+        :return: DataFrame or Series，因子载荷
         --------
-            DataFrame:
+            DataFrame(code==None) or Series(code<>None):
             0: date, 日期，str，格式YYYY-MM-DD
             1: factorvalue,因子载荷
             2: id, 证券代码，如SH600000
@@ -783,6 +894,11 @@ class Utils(object):
             df_factor_loading = pd.read_csv(db_file, header=0)
         else:
             df_factor_loading = DataFrame()
+        if (code is not None) and (not df_factor_loading.empty):
+            code = cls.code_to_symbol(code)
+            df_factor_loading = df_factor_loading[df_factor_loading['id'] == code]
+            if not df_factor_loading.empty:
+                df_factor_loading = df_factor_loading.iloc[0]
         if nan_value is not None:
             df_factor_loading = df_factor_loading.fillna(nan_value)
         return df_factor_loading
