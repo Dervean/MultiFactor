@@ -66,6 +66,9 @@ CLEAN_EXTREME_VALUE_MULTI_CONST=5.2
 # 财务数据中金额的单位
 FIN_DATA_AMOUNT_UNIT=10000
 
+# 绝对极小值
+TINY_ABS_VALUE = 0.00001
+
 
 if __name__ == '__main__':
     pass

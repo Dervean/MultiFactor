@@ -77,6 +77,17 @@ EARNINGSYIELD_CT = DottableDict({'db_file': 'RiskFactor/EarningsYield/EarningsYi
                                  'component': ['EPFWD', 'CETOP', 'ETOP'],
                                  'weight': {'EPFWD': 0.68, 'CETOP': 0.21, 'ETOP': 0.11}})
 
+# Leverage风险因子的配置参数
+MLEV_CT = DottableDict({'db_file': 'RiskFactor/Leverage/MLEV/MLEV',
+                        'listed_days': 0})
+DTOA_CT = DottableDict({'db_file': 'RiskFactor/Leverage/DTOA/DTOA',
+                        'listed_days': 0})
+BLEV_CT =DottableDict({'db_file': 'RiskFactor/Leverage/BLEV/BLEV',
+                       'listed_days': 0})
+LEVERAGE_CT = DottableDict({'db_file': 'RiskFactor/Leverage/Leverage',
+                            'component': ['MLEV', 'DTOA', 'BLEV'],
+                            'weight': {'MLEV': 0.38, 'DTOA': 0.35, 'BLEV': 0.27}})
+
 
 if __name__ == '__main__':
     pass

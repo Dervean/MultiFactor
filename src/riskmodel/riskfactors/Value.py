@@ -11,7 +11,7 @@ from src.factors.factor import Factor
 import src.riskmodel.riskfactors.cons as risk_ct
 import src.factors.cons as factor_ct
 from src.util.utils import Utils
-from src.util.dataapi.CDataHandler import  CDataHandler
+from src.util.dataapi.CDataHandler import CDataHandler
 from src.util.Cache import Cache
 import pandas as pd
 import numpy as np
@@ -23,6 +23,7 @@ import time
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
+
 
 class BTOP(Factor):
     """账面市值比因子类(Book-to-Price)"""

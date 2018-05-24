@@ -1,8 +1,8 @@
 #!/usr/bin/env/ python3
 # -*- coding: utf-8 -*-
-# @Abstract: 风险因子中的盈利预期因子
-# @Filename: EarningsYield
-# @Date:   : 2018-05-16 16:07
+# @Abstract: 风险因子中的杠杆因子
+# @Filename: Leverage
+# @Date:   : 2018-05-23 14:28
 # @Author  : YuJun
 # @Email   : yujun_mail@163.com
 
@@ -10,7 +10,8 @@
 from src.factors.factor import Factor
 import src.riskmodel.riskfactors.cons as risk_ct
 import src.factors.cons as factor_ct
-from src.util.utils import Utils, ConsensusType
+import src.util.cons as utils_con
+from src.util.utils import Utils
 from src.util.dataapi.CDataHandler import  CDataHandler
 import pandas as pd
 import numpy as np
@@ -23,14 +24,156 @@ import time
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
-class EPFWD(Factor):
-    """预期盈利市值比因子类"""
-    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.EPFWD_CT.db_file)
+
+class MLEV(Factor):
+    """市场杠杆因子类"""
+    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.MLEV_CT.db_file)
 
     @classmethod
     def _calc_factor_loading(cls, code, calc_date):
         """
-        计算指定日期、指定个股EPFWD因子载荷
+        计算指定日期、指定个股MLEV因子载荷
+        Parameters:
+        --------
+        :param code: str
+            个股代码, 如Sh600000, 600000
+        :param calc_date: datetime-like, str
+            计算日期, 格式: YYYY-MM-DD
+        :return: pd.Series
+        --------
+            个股的MLEV因子载荷
+            0. code
+            1. mlev
+            如果计算失败, 返回None
+        """
+        code = Utils.code_to_symbol(code)
+        report_date = Utils.get_fin_report_date(calc_date)
+        # 读取个股最新财务报表摘要数据
+        fin_summary_data = Utils.get_fin_summary_data(code, report_date)
+        # ld为个股长期负债的账面价值, 如果缺失长期负债数据, 则用负债总计代替
+        if fin_summary_data is None:
+            return None
+        ld = fin_summary_data['TotalNonCurrentLiabilities']
+        if np.isnan(ld):
+            ld = fin_summary_data['TotalLiabilities']
+        if np.isnan(ld):
+            return None
+        ld *= 10000.0
+        # pe为优先股账面价值, 对于A股pe设置为0
+        pe = 0.0
+        # 读取个股市值数据
+        lncap_path = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.LNCAP_CT.db_file)
+        lncap_factor_loading = Utils.read_factor_loading(lncap_path, Utils.datetimelike_to_str(calc_date, dash=False), code)
+        if lncap_factor_loading.empty:
+            return None
+        me = np.exp(lncap_factor_loading['factorvalue'])
+        # mlev = (me + pe + ld)/me
+        mlev = (me + pe + ld) / me
+
+        return pd.Series([code, mlev], index=['code', 'mlev'])
+
+    @classmethod
+    def _calc_factor_loading_proc(cls, code, calc_date, q):
+        """
+        用于并行计算因子载荷
+        Parameters:
+        --------
+        :param code: str
+            个股代码, 如SH600000, 600000
+        :param calc_date: datetime-like, str
+            计算日期, 格式: YYYY-MM-DD
+        :param q: 队列, 用于进程间通信
+        :return: 添加因子载荷至队列
+        """
+        logging.info('[{}] Calc MLEV factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        mlev_data = None
+        try:
+            mlev_data = cls._calc_factor_loading(code, calc_date)
+        except Exception as e:
+            print(e)
+        if mlev_data is not None:
+            q.put(mlev_data)
+
+    @classmethod
+    def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
+        """
+        计算指定日期的样本个股的因子载荷, 并保存至因子数据库
+        Parameters:
+        --------
+        :param start_date: datetime-like, str
+            开始日期, 格式: YYYY-MM-DD or YYYYMMDD
+        :param end_date: datetime-like, str
+            结束日期, 如果为None, 则只计算start_date日期的因子载荷, 格式: YYYY-MM-DD or YYYYMMDD
+        :param month_end: bool, 默认为True
+            如果为True, 则只计算月末时点的因子载荷
+        :param save: bool, 默认为True
+            是否保存至因子数据库
+        :param kwargs:
+            'multi_proc': bool, True=采用多进程, False=采用单进程, 默认为False
+        :return: dict
+            因子载荷数据
+        """
+        # 取得交易日序列及股票基本信息表
+        start_date = Utils.to_date(start_date)
+        if end_date is not None:
+            end_date = Utils.to_date(end_date)
+            trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
+        else:
+            trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
+        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
+        # 遍历交易日序列, 计算MLEV因子载荷
+        dict_mlev = None
+        for calc_date in trading_days_series:
+            if month_end and (not Utils.is_month_end(calc_date)):
+                continue
+            logging.info('[%s] Calc MLEV factor loading.' % Utils.datetimelike_to_str(calc_date))
+            # 遍历个股, 计算个股的MLEV因子值
+            s = (calc_date - datetime.timedelta(days=risk_ct.MLEV_CT.listed_days)).strftime('%Y%m%d')
+            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            ids = []    # 个股代码list
+            mlevs = []  # MLEV因子值list
+
+            if 'multi_proc' not in kwargs:
+                kwargs['multi_proc'] = False
+            if not kwargs['multi_proc']:
+                # 采用单进程计算MLEV因子值
+                for _, stock_info in stock_basics.iterrows():
+                    logging.info("[%s] Calc %s's MLEV factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    mlev_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
+                    if mlev_data is not None:
+                        ids.append(mlev_data['code'])
+                        mlevs.append(mlev_data['mlev'])
+            else:
+                # 采用多进程并行计算MLEV因子值
+                q = Manager().Queue()   # 队列, 用于进程间通信, 存储每个进程计算的因子载荷
+                p = Pool(4)             # 进程池, 最多同时开启4个进程
+                for _, stock_info in stock_basics.iterrows():
+                    p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
+                p.close()
+                p.join()
+                while not q.empty():
+                    mlev_data = q.get(True)
+                    ids.append(mlev_data['code'])
+                    mlevs.append(mlev_data['mlev'])
+
+            date_label = Utils.get_trading_days(start=calc_date, ndays=2)[1]
+            dict_mlev = {'date': [date_label]*len(ids), 'id': ids, 'factorvalue': mlevs}
+            if save:
+                Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_mlev, ['date', 'id', 'factorvalue'])
+            # 暂停180秒
+            logging.info('Suspending for 180s.')
+            # time.sleep(180)
+        return dict_mlev
+
+
+class DTOA(Factor):
+    """资产负债比因子"""
+    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.DTOA_CT.db_file)
+
+    @classmethod
+    def _calc_factor_loading(cls, code, calc_date):
+        """
+        计算指定日期、指定个股DTOA因子载荷
         Parameters:
         --------
         :param code: str
@@ -39,39 +182,174 @@ class EPFWD(Factor):
             计算日期, 格式: YYYY-MM-DD
         :return: pd.Series
         --------
-            个股的EPFWD因子载荷
+            个股的DTOA因子载荷
             0. code
-            1. epfwd
+            1. dtoa
             如果计算失败, 返回None
         """
         code = Utils.code_to_symbol(code)
-        # 读取个股的预期盈利数据
-        predictedearnings_data =  Utils.get_consensus_data(calc_date, code, ConsensusType.PredictedEarings)
-        if predictedearnings_data is None:
-            # 如果个股的预期盈利数据不存在, 那么代替ttm净利润
-            ttm_fin_data = Utils.get_ttm_fin_basic_data(code, calc_date)
-            if ttm_fin_data is None:
+        report_date = Utils.get_fin_report_date(calc_date)
+        # 读取最新主要财务指标数据
+        fin_basic_data = Utils.get_fin_basic_data(code, report_date)
+        if fin_basic_data is None:
+            return None
+        # td为负债总额, ta为总资产
+        td = fin_basic_data['TotalLiability']
+        if np.isnan(td):
+            return None
+        ta = fin_basic_data['TotalAsset']
+        if np.isnan(ta):
+            return None
+        if abs(ta) < utils_con.TINY_ABS_VALUE:
+            return None
+        # dtoa = td / ta
+        dtoa = td / ta
+
+        return pd.Series([code, dtoa], index=['code', 'dtoa'])
+
+    @classmethod
+    def _calc_factor_loading_proc(cls, code, calc_date, q):
+        """
+        用于并行计算因子载荷
+        Parameters:
+        --------
+        :param code: str
+            个股代码, 如SH600000, 600000
+        :param calc_date: datetime-like, str
+            计算日期, 格式: YYYY-MM-DD
+        :param q: 队列, 用于进程间通信
+        :return: 添加因子载荷至队列
+        """
+        logging.info('[{}] Calc DTOA factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        dtoa_data = None
+        try:
+            dtoa_data = cls._calc_factor_loading(code, calc_date)
+        except Exception as e:
+            print(e)
+        if dtoa_data is not None:
+            q.put(dtoa_data)
+
+    @classmethod
+    def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
+        """
+        计算指定日期的样本个股的因子载荷, 并保存至因子数据库
+        Parameters:
+        --------
+        :param start_date: datetime-like, str
+            开始日期, 格式: YYYY-MM-DD or YYYYMMDD
+        :param end_date: datetime-like, str
+            结束日期, 如果为None, 则只计算start_date日期的因子载荷, 格式: YYYY-MM-DD or YYYYMMDD
+        :param month_end: bool, 默认为True
+            如果为True, 则只计算月末时点的因子载荷
+        :param save: bool, 默认为True
+            是否保存至因子数据库
+        :param kwargs:
+            'multi_proc': bool, True=采用多进程, False=采用单进程, 默认为False
+        :return: dict
+            因子载荷数据
+        """
+        # 取得交易日序列及股票基本信息表
+        start_date = Utils.to_date(start_date)
+        if end_date is not None:
+            end_date = Utils.to_date(end_date)
+            trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
+        else:
+            trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
+        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
+        # 遍历交易日序列, 计算DTOA因子载荷
+        dict_dtoa = None
+        for calc_date in trading_days_series:
+            if month_end and (not Utils.is_month_end(calc_date)):
+                continue
+            logging.info('[%s] Calc DTOA factor loading.' % Utils.datetimelike_to_str(calc_date))
+            # 遍历个股, 计算个股的DTOA因子值
+            s = (calc_date - datetime.timedelta(days=risk_ct.DTOA_CT.listed_days)).strftime('%Y%m%d')
+            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            ids = []    # 个股代码list
+            dtoas = []  # DTOA因子值list
+
+            if 'multi_proc' not in kwargs:
+                kwargs['multi_proc'] = False
+            if not kwargs['multi_proc']:
+                # 采用单进程计算DTOA因子值
+                for _, stock_info in stock_basics.iterrows():
+                    logging.info("[%s] Cacl %s's DTOA factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    dtoa_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
+                    if dtoa_data is not None:
+                        ids.append(dtoa_data['code'])
+                        dtoas.append(dtoa_data['dtoa'])
+            else:
+                # 采用多进程并行计算DTOA因子值
+                q = Manager().Queue()   # 队列, 用于进程间通信, 存储每个进程计算的因子载荷
+                p = Pool(4)             # 进程池, 最多同时开启4个进程
+                for _, stock_info in stock_basics.iterrows():
+                    p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
+                p.close()
+                p.join()
+                while not q.empty():
+                    dtoa_data = q.get(True)
+                    ids.append(dtoa_data['code'])
+                    dtoas.append(dtoa_data['dtoa'])
+
+            date_label = Utils.get_trading_days(start=calc_date, ndays=2)[1]
+            dict_dtoa = {'date': [date_label]*len(ids), 'id': ids, 'factorvalue': dtoas}
+            if save:
+                Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_dtoa, ['date', 'id', 'factorvalue'])
+            # 暂停180秒
+            logging.info('Suspending for 180s.')
+            # time.sleep(180)
+        return dict_dtoa
+
+
+class BLEV(Factor):
+    """账面杠杆因子类"""
+    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.BLEV_CT.db_file)
+
+    @classmethod
+    def _calc_factor_loading(cls, code, calc_date):
+        """
+        计算指定日期、指定个股BLEV因子载荷
+        Parameters:
+        --------
+        :param code: str
+            个股代码, 如SH600000, 600000
+        :param calc_date: datetime-like, str
+            计算日期, 格式: YYYY-MM-DD
+        :return: pd.Series
+        --------
+            个股的BLEV因子载荷
+            0. code
+            1. blev
+            如果计算失败, 返回None
+        """
+        code = Utils.code_to_symbol(code)
+        report_date = Utils.get_fin_report_date(calc_date)
+        # 读取个股最新财务报表摘要数据
+        fin_summary_data = Utils.get_fin_summary_data(code, report_date)
+        if fin_summary_data is None:
+            return None
+        be = fin_summary_data['TotalShareholderEquity']
+        if np.isnan(be):
+            return None
+        if abs(be) < utils_con.TINY_ABS_VALUE:
+            return None
+        ld = fin_summary_data['TotalNonCurrentLiabilities']
+        if np.isnan(ld):
+            ld = fin_summary_data['TotalLiabilities']
+            if np.isnan(ld):
                 return None
-            predictedearnings_data = pd.Series([code, ttm_fin_data['NetProfit']], index=['code', 'predicted_earnings'])
-        fpredictedearnings = predictedearnings_data['predicted_earnings']
-        if np.isnan(fpredictedearnings):
-            return None
-        # 读取个股市值
-        size_path = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.LNCAP_CT.db_file)
-        size_factor_loading = Utils.read_factor_loading(size_path, Utils.datetimelike_to_str(calc_date, dash=False), code)
-        if size_factor_loading.empty:
-            return None
-        # epfwd = 盈利预期/市值
-        epfwd = fpredictedearnings * 10000.0 / np.exp(size_factor_loading['factorvalue'])
+        pe = 0
+        # blev = (be + pe + ld) / be
+        blev = (be + pe + ld) / be
 
-        return pd.Series([code, epfwd], index=['code', 'epfwd'])
+        return pd.Series([code, blev], index=['code', 'blev'])
 
     @classmethod
     def _calc_factor_loading_proc(cls, code, calc_date, q):
         """
         用于并行计算因子载荷
         Parameters:
-        ---------
+        --------
         :param code: str
             个股代码, 如SH600000, 600000
         :param calc_date: datetime-like, str
@@ -79,14 +357,14 @@ class EPFWD(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc EPFWD factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
-        epfwd_data = None
+        logging.info('[{}] Calc BLEV factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        blev_data = None
         try:
-            epfwd_data = cls._calc_factor_loading(code, calc_date)
+            blev_data = cls._calc_factor_loading(code, calc_date)
         except Exception as e:
             print(e)
-        if epfwd_data is not None:
-            q.put(epfwd_data)
+        if blev_data is not None:
+            q.put(blev_data)
 
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
@@ -115,30 +393,30 @@ class EPFWD(Factor):
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
         all_stock_basics = CDataHandler.DataApi.get_secu_basics()
-        # 遍历交易日序列, 计算EPFWD因子载荷
-        dict_epfwd = None
+        # 遍历交易日序列, 计算BLEV因子载荷
+        dict_blev = None
         for calc_date in trading_days_series:
             if month_end and (not Utils.is_month_end(calc_date)):
                 continue
-            logging.info('[%s] Calc EPFWD factor loading.' % Utils.datetimelike_to_str(calc_date))
-            # 遍历个股, 计算个股的EPFWD因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.EPFWD_CT.listed_days)).strftime('%Y%m%d')
+            logging.info('[%s] Calc BLEV factor loading.' % Utils.datetimelike_to_str(calc_date))
+            # 遍历个股, 计算个股的BLEV因子值
+            s = (calc_date - datetime.timedelta(days=risk_ct.BLEV_CT.listed_days)).strftime('%Y%m%d')
             stock_basics = all_stock_basics[all_stock_basics.list_date < s]
-            ids = []        # 个股代码list
-            epfwds = []     # EPFWD因子值list
+            ids = []    # 个股代码list
+            blevs = []  # BLEV因子值list
 
             if 'multi_proc' not in kwargs:
                 kwargs['multi_proc'] = False
             if not kwargs['multi_proc']:
-                # 采用单进程计算EPFWD因子值
+                # 采用单进程计算BLEV因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's EPFWD factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
-                    epfwd_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
-                    if epfwd_data is not None:
-                        ids.append(epfwd_data['code'])
-                        epfwds.append(epfwd_data['epfwd'])
+                    logging.info("[%s] Calc %s's BLEV factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    blev_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
+                    if blev_data is not None:
+                        ids.append(blev_data['code'])
+                        blevs.append(blev_data['blev'])
             else:
-                # 采用多进程并行计算EPFWD因子值
+                # 采用多进程并行计算BLEV因子值
                 q = Manager().Queue()   # 队列, 用于进程间通信, 存储每个进程计算的因子载荷
                 p = Pool(4)             # 进程池, 最多同时开启4个进程
                 for _, stock_info in stock_basics.iterrows():
@@ -146,291 +424,23 @@ class EPFWD(Factor):
                 p.close()
                 p.join()
                 while not q.empty():
-                    epfwd_data = q.get(True)
-                    ids.append(epfwd_data['code'])
-                    epfwds.append(epfwd_data['epfwd'])
+                    blev_data = q.get(True)
+                    ids.append(blev_data['code'])
+                    blevs.append(blev_data['blev'])
 
             date_label = Utils.get_trading_days(start=calc_date, ndays=2)[1]
-            dict_epfwd = {'date': [date_label]*len(ids), 'id':ids, 'factorvalue': epfwds}
+            dict_blev = {'date': [date_label]*len(ids), 'id': ids, 'factorvalue': blevs}
             if save:
-                Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_epfwd, ['date', 'id', 'factorvalue'])
+                Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_blev, ['date', 'id', 'factorvalue'])
             # 暂停180秒
             logging.info('Suspending for 180s.')
             # time.sleep(180)
-        return dict_epfwd
+        return dict_blev
 
 
-class CETOP(Factor):
-    """现金流量市值比因子类"""
-    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.CETOP_CT.db_file)
-
-    @classmethod
-    def _calc_factor_loading(cls, code, calc_date):
-        """
-        计算指定日期、指定个股CETOP因子载荷
-        Parameters:
-        --------
-        :param code: str
-            个股代码, 如SH600000, 600000
-        :param calc_date: datetime-like, str
-            计算日期, 格式: YYYY-MM-DD
-        :return: pd.Series
-        --------
-            个股的CETOP因子载荷
-            0. code
-            1. cetop
-            如果计算失败, 返回None
-        """
-        code = Utils.code_to_symbol(code)
-        # 读取个股的主要财务指标数据ttm值
-        ttm_fin_data = Utils.get_ttm_fin_basic_data(code, calc_date)
-        if ttm_fin_data is None:
-            return None
-        ttm_cash = ttm_fin_data['NetOperateCashFlow']
-        if np.isnan(ttm_cash):
-            return None
-        # 读取个股市值
-        lncap_path = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.LNCAP_CT.db_file)
-        lncap_data = Utils.read_factor_loading(lncap_path, Utils.datetimelike_to_str(calc_date, dash=False), code)
-        if lncap_data.empty:
-            return None
-        secu_cap = np.exp(lncap_data['factorvalue'])
-        # cetop = 经营活动现金流ttm值/市值
-        cetop = ttm_cash * 10000 / secu_cap
-
-        return pd.Series([code, cetop], index=['code', 'cetop'])
-
-    @classmethod
-    def _calc_factor_loading_proc(cls, code, calc_date, q):
-        """
-        用于并行计算因子载荷
-        Parameters:
-        --------
-        :param code: str
-            个股代码, 如SH600000, 600000
-        :param calc_date: datetime-like, str
-            计算日期, 格式: YYYY-MM-DD
-        :param q: 队列, 用于进程间通信
-        :return: 添加因子载荷至队列
-        """
-        logging.info('[{}] Calc CETOP factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
-        cetop_data = None
-        try:
-            cetop_data = cls._calc_factor_loading(code, calc_date)
-        except Exception as e:
-            print(e)
-        if cetop_data is not None:
-            q.put(cetop_data)
-
-    @classmethod
-    def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
-        """
-        计算指定日期的样本个股的因子载荷, 并保存至因子数据库
-        Parameters:
-        --------
-        :param start_date: datetime-like, str
-            开始日期, 格式: YYYY-MM-DD or YYYYMMDD
-        :param end_date: datetime-like, str
-            结束日期, 如果为None, 则只计算start_date日期的因子载荷, 格式: YYYY-MM-DD or YYYYMMDD
-        :param month_end: bool, 默认为True
-            如果为True, 则只计算月末时点的因子载荷
-        :param save: bool, 默认为True
-            是否保存至因子数据库
-        :param kwargs:
-            'multi_proc': bool, True=采用多进程, False=采用单进程, 默认为False
-        :return: dict
-            因子载荷数据
-        """
-        # 取得交易日序列及股票基本信息表
-        start_date = Utils.to_date(start_date)
-        if end_date is not None:
-            end_date = Utils.to_date(end_date)
-            trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
-        else:
-            trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
-        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
-        # 遍历交易日序列, 计算CETOP因子载荷
-        dict_cetop = None
-        for calc_date in trading_days_series:
-            if month_end and (not Utils.is_month_end(calc_date)):
-                continue
-            logging.info('[%s] Calc CETOP factor loading.' % Utils.datetimelike_to_str(calc_date))
-            # 遍历个股, 计算个股的CETOP因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.CETOP_CT.listed_days)).strftime('%Y%m%d')
-            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
-            ids = []
-            cetops = []
-
-            if 'multi_proc' not in kwargs:
-                kwargs['multi_proc'] = False
-            if not kwargs['multi_proc']:
-                # 采用单进程计算CETOP因子值
-                for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's CETOP factor loading." % (Utils.datetimelike_to_str(calc_date), stock_info.symbol))
-                    cetop_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
-                    if cetop_data is not None:
-                        ids.append(cetop_data['code'])
-                        cetops.append(cetop_data['cetop'])
-            else:
-                # 采用多进程并行计算CETOP因子值
-                q = Manager().Queue()   # 队列, 用于进程间通信, 存储每个进程计算的因子载荷
-                p = Pool(4)             # 进程池, 最多同时开启4个进程
-                for _, stock_info in stock_basics.iterrows():
-                    p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
-                p.close()
-                p.join()
-                while not q.empty():
-                    cetop_data = q.get(True)
-                    ids.append(cetop_data['code'])
-                    cetops.append(cetop_data['cetop'])
-
-            date_label = Utils.get_trading_days(start=calc_date, ndays=2)[1]
-            dict_cetop = {'date': [date_label]*len(ids), 'id': ids, 'factorvalue': cetops}
-            if save:
-                Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_cetop, ['date', 'id', 'factorvalue'])
-            # 暂停180秒
-            logging.info('Suspending for 180s.')
-            # time.sleep(180)
-        return dict_cetop
-
-
-class ETOP(Factor):
-    """盈利市值比因子类"""
-    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.ETOP_CT.db_file)
-
-    @classmethod
-    def _calc_factor_loading(cls, code, calc_date):
-        """
-        计算指定日期、指定个股ETOP因子载荷
-        Parameters:
-        --------
-        :param code: str
-            个股代码, 如SH600000, 600000
-        :param calc_date: datetime-like, str
-            计算日期, 格式: YYYY-MM-DD
-        :return: pd.Series
-        --------
-            个股的ETOP因子载荷
-            0. code
-            1. etop
-            如果计算失败, 返回None
-        """
-        code = Utils.code_to_symbol(code)
-        # 读取个股的ttm净利润
-        ttm_fin_data = Utils.get_ttm_fin_basic_data(code, calc_date)
-        if ttm_fin_data is None:
-            return None
-        ttm_netprofit = ttm_fin_data['NetProfit']
-        if np.isnan(ttm_netprofit):
-            return None
-        # 读取个股市值
-        lncap_path = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.LNCAP_CT.db_file)
-        lncap_data = Utils.read_factor_loading(lncap_path, Utils.datetimelike_to_str(calc_date, dash=False), code)
-        if lncap_data.empty:
-            return None
-        secu_cap = np.exp(lncap_data['factorvalue'])
-        # etop = ttm净利润/市值
-        etop = ttm_netprofit * 10000 / secu_cap
-
-        return pd.Series([code, etop], index=['code', 'etop'])
-
-    @classmethod
-    def _calc_factor_loading_proc(cls, code, calc_date, q):
-        """
-        用于并行计算因子载荷
-        Parameters:
-        --------
-        :param code: str
-            个股代码, 如SH600000, 600000
-        :param calc_date: datetime-like, str
-            计算日期, 格式: YYYY-MM-DD
-        :param q: 队列, 用于进程间通信
-        :return: 添加因子载荷至队列
-        """
-        logging.info('[{}] Calc ETOP factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
-        etop_data = None
-        try:
-            etop_data = cls._calc_factor_loading(code, calc_date)
-        except Exception as e:
-            print(e)
-        if etop_data is not None:
-            q.put(etop_data)
-
-    @classmethod
-    def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
-        """
-        计算指定日期的样本个股的因子载荷, 并保存至因子数据库
-        Parameters:
-        --------
-        :param start_date: datetime-like, str
-            开始日期, 格式: YYYY-MM-DD or YYYYMMDD
-        :param end_date: datetime-like, str
-            结束日期, 如果为None, 则只计算start_date日期的因子载荷, 格式: YYYY-MM-DD or YYYYMMDD
-        :param month_end: bool, 默认为True
-            如果为True, 则只计算月末时点的因子载荷
-        :param save: bool, 默认为True
-            是否保存至因子数据库
-        :param kwargs:
-            'multi_proc': bool, True=采用多进程, False=采用单进程, 默认为False
-        :return: dict
-            因子载荷数据
-        """
-        # 取得交易日序列及股票基本信息表
-        start_date = Utils.to_date(start_date)
-        if end_date is not None:
-            end_date = Utils.to_date(end_date)
-            trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
-        else:
-            trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
-        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
-        # 遍历交易日序列, 计算ETOP因子载荷
-        dict_etop = None
-        for calc_date in trading_days_series:
-            if month_end and (not Utils.is_month_end(calc_date)):
-                continue
-            logging.info('[%s] Calc ETOP factor loading.' % Utils.datetimelike_to_str(calc_date))
-            # 遍历个股, 计算个股的ETOP因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.ETOP_CT.listed_days)).strftime('%Y%m%d')
-            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
-            ids = []
-            etops = []
-
-            if 'multi_proc' not in kwargs:
-                kwargs['multi_proc'] = False
-            if not kwargs['multi_proc']:
-                # 采用单进程计算ETOP因子值
-                for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's ETOP factor loading." % (Utils.datetimelike_to_str(calc_date), stock_info.symbol))
-                    etop_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
-                    if etop_data is not None:
-                        ids.append(etop_data['code'])
-                        etops.append(etop_data['etop'])
-            else:
-                # 采用多进程并行计算ETOP因子值
-                q = Manager().Queue()   # 队列, 用于进程间通信, 存储每个进程计算的因子载荷
-                p = Pool(4)             # 进程池, 最多同时开启4个进程
-                for _, stock_info in stock_basics.iterrows():
-                    p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
-                p.close()
-                p.join()
-                while not q.empty():
-                    etop_data = q.get(True)
-                    ids.append(etop_data['code'])
-                    etops.append(etop_data['etop'])
-
-            date_label = Utils.get_trading_days(start=calc_date, ndays=2)[1]
-            dict_etop = {'date': [date_label]*len(ids), 'id': ids, 'factorvalue': etops}
-            if save:
-                Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_etop, ['date', 'id', 'factorvalue'])
-            # 暂停180秒
-            logging.info('Suspending for 180s.')
-            # time.sleep(180)
-        return dict_etop
-
-
-class EarningsYield(Factor):
-    """风险因子中的盈利预期因子类"""
-    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.EARNINGSYIELD_CT.db_file)
+class Leverage(Factor):
+    """风险因子中的杠杆因子类"""
+    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.LEVERAGE_CT.db_file)
 
     @classmethod
     def _calc_factor_loading(cls, code, calc_date):
@@ -466,43 +476,44 @@ class EarningsYield(Factor):
             trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
-        # 遍历交易日序列, 计算EarningsYield因子下各个成分因子的因子载荷
+        # 遍历交易日序列, 计算Leverage因子下各个成分因子的因子载荷
         if 'multi_proc' not in kwargs:
             kwargs['multi_proc'] = False
         for calc_date in trading_days_series:
             if month_end and (not Utils.is_month_end(calc_date)):
                 continue
-            for com_factor in risk_ct.EARNINGSYIELD_CT.component:
+            # 计算各成分因子的因子载荷
+            for com_factor in risk_ct.LEVERAGE_CT.component:
                 factor = eval(com_factor + '()')
                 factor.calc_factor_loading(start_date=calc_date, end_date=None, month_end=month_end, save=save, multi_proc=kwargs['multi_proc'])
-            # 计算EarningsYield因子载荷
-            earningsyield_factor = pd.DataFrame()
-            for com_factor in risk_ct.EARNINGSYIELD_CT.component:
+            # 计算Leverage因子载荷
+            leverage_factor = pd.DataFrame()
+            for com_factor in risk_ct.LEVERAGE_CT.component:
                 factor_path = os.path.join(factor_ct.FACTOR_DB.db_path, eval('risk_ct.' + com_factor + '_CT')['db_file'])
                 factor_loading = Utils.read_factor_loading(factor_path, Utils.datetimelike_to_str(calc_date, dash=False))
                 factor_loading.drop(columns='date', inplace=True)
                 factor_loading.rename(columns={'factorvalue': com_factor}, inplace=True)
                 factor_loading[com_factor] = Utils.normalize_data(Utils.clean_extreme_value(np.array(factor_loading[com_factor]).reshape((len(factor_loading), 1))))
-                if earningsyield_factor.empty:
-                    earningsyield_factor = factor_loading
+                if leverage_factor.empty:
+                    leverage_factor = factor_loading
                 else:
-                    earningsyield_factor = pd.merge(left=earningsyield_factor, right=factor_loading, how='inner', on='id')
-            earningsyield_factor.set_index('id', inplace=True)
-            weight = pd.Series(risk_ct.EARNINGSYIELD_CT.weight)
-            earningsyield_factor = (earningsyield_factor * weight).sum(axis=1)
-            earningsyield_factor.name = 'factorvalue'
-            earningsyield_factor.index.name = 'id'
-            earningsyield_factor = pd.DataFrame(earningsyield_factor)
-            earningsyield_factor.reset_index(inplace=True)
-            earningsyield_factor['date'] = Utils.get_trading_days(start=calc_date, ndays=2)[1]
-            # 保存EarningsYield因子载荷
+                    leverage_factor = pd.merge(left=leverage_factor, right=factor_loading, how='inner', on='id')
+            leverage_factor.set_index('id', inplace=True)
+            weight = pd.Series(risk_ct.LEVERAGE_CT.weight)
+            leverage_factor = (leverage_factor * weight).sum(axis=1)
+            leverage_factor.name = 'factorvalue'
+            leverage_factor.index.name = 'id'
+            leverage_factor = pd.DataFrame(leverage_factor)
+            leverage_factor.reset_index(inplace=True)
+            leverage_factor['date'] = Utils.get_trading_days(start=calc_date, ndays=2)[1]
+            # 保存Leverage因子载荷
             if save:
-                Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), earningsyield_factor.to_dict('list'), ['date', 'id', 'factorvalue'])
+                Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), leverage_factor.to_dict('list'), ['date', 'id', 'factorvalue'])
 
 
 if __name__ == '__main__':
     pass
-    # EPFWD.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
-    # CETOP.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
-    # ETOP.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
-    EarningsYield.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
+    # MLEV.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
+    # DTOA.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
+    # BLEV.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
+    Leverage.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)
