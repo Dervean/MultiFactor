@@ -140,33 +140,36 @@ class BETA(Factor):
                 continue
             logging.info('[%s] Calc BETA factor loading.' % Utils.datetimelike_to_str(calc_date))
             # 遍历个股, 计算个股BETA因子值
-            s = (calc_date - datetime.timedelta(days=180)).strftime('%Y%m%d')
+            s = (calc_date - datetime.timedelta(days=risk_ct.BETA_CT.listed_days)).strftime('%Y%m%d')
             stock_basics = all_stock_basics[all_stock_basics.list_date < s]
             ids = []        # 个股代码list
             betas = []      # BETA因子值
             hsigmas = []    # HSIGMA因子值
 
-            # 采用单进程计算BETA因子和HSIGMA因子值,
-            # for _, stock_info in stock_basics.iterrows():
-            #     logging.info("[%s] Calc %s's BETA and HSIGMA factor data." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
-            #     beta_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
-            #     if beta_data is not None:
-            #         ids.append(beta_data['code'])
-            #         betas.append(beta_data['beta'])
-            #         hsigmas.append(beta_data['hsigma'])
-
-            # 采用多进程并行计算BETA因子和HSIGMA因子值
-            q = Manager().Queue()   # 队列, 用于进程间通信, 存储每个进程计算的因子载荷
-            p = Pool(4)             # 进程池, 最多同时开启4个进程
-            for _, stock_info in stock_basics.iterrows():
-                p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
-            p.close()
-            p.join()
-            while not q.empty():
-                beta_data = q.get(True)
-                ids.append(beta_data['code'])
-                betas.append(beta_data['beta'])
-                hsigmas.append(beta_data['hsigma'])
+            if 'multi_proc' not in kwargs:
+                kwargs['multi_proc'] = False
+            if not kwargs['multi_proc']:
+                # 采用单进程计算BETA因子和HSIGMA因子值,
+                for _, stock_info in stock_basics.iterrows():
+                    logging.info("[%s] Calc %s's BETA and HSIGMA factor data." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    beta_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
+                    if beta_data is not None:
+                        ids.append(beta_data['code'])
+                        betas.append(beta_data['beta'])
+                        hsigmas.append(beta_data['hsigma'])
+            else:
+                # 采用多进程并行计算BETA因子和HSIGMA因子值
+                q = Manager().Queue()   # 队列, 用于进程间通信, 存储每个进程计算的因子载荷
+                p = Pool(4)             # 进程池, 最多同时开启4个进程
+                for _, stock_info in stock_basics.iterrows():
+                    p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
+                p.close()
+                p.join()
+                while not q.empty():
+                    beta_data = q.get(True)
+                    ids.append(beta_data['code'])
+                    betas.append(beta_data['beta'])
+                    hsigmas.append(beta_data['hsigma'])
 
             date_label = Utils.get_trading_days(calc_date, ndays=2)[1]
             dict_beta = {'date': [date_label]*len(ids), 'id': ids, 'factorvalue': betas}
@@ -181,6 +184,81 @@ class BETA(Factor):
         return dict_beta
 
 
+class Beta(Factor):
+    """风险因子的Beta因子类"""
+    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.Beta_CT.db_file)
+
+    @classmethod
+    def _calc_factor_loading(cls, code, calc_date):
+        pass
+
+    @classmethod
+    def _calc_factor_loading_proc(cls, code, calc_date, q):
+        pass
+
+
+    @classmethod
+    def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
+        """
+        计算指定日期的样本个股的因子载荷, 并保存至因子数据库
+        Parameters:
+        --------
+        :param start_date: datetime-like, str
+            开始日期, 格式: YYYY-MM-DD or YYYYMMDD
+        :param end_date: datetime-like, str
+            结束日期, 如果为None, 则只计算start_date日期的因子载荷, 格式: YYYY-MM-DD or YYYYMMDD
+        :param month_end: bool, 默认为True
+            如果为True, 则只计算月末时点的因子载荷
+        :param save: bool, 默认为True
+            是否保存至因子数据库
+        :param kwargs:
+            'multi_proc': bool, True=采用多进程, False=采用单进程, 默认为False
+        :return: dict
+            因子载荷数据
+        """
+        # 取得交易日序列
+        start_date = Utils.to_date(start_date)
+        if end_date is not None:
+            end_date = Utils.to_date(end_date)
+            trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
+        else:
+            trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
+        # 遍历交易日序列, 计算Beta因子下各个成分因子的因子载荷
+        if 'multi_proc' not in kwargs:
+            kwargs['multi_proc'] = False
+        for calc_date in trading_days_series:
+            if month_end and (not Utils.is_month_end(calc_date)):
+                continue
+            # 计算各成分因子的因子载荷
+            for com_factor in risk_ct.Beta_CT.component:
+                factor = eval(com_factor + '()')
+                factor.calc_factor_loading(start_date=calc_date, end_date=None, month_end=month_end, save=save, multi_proc=kwargs['multi_proc'])
+            # 合成Beta因子载荷
+            Beta_factor = pd.DataFrame()
+            for com_factor in risk_ct.Beta_CT.component:
+                factor_path = os.path.join(factor_ct.FACTOR_DB.db_path, eval('risk_ct.' + com_factor + '_CT')['db_file'])
+                factor_loading = Utils.read_factor_loading(factor_path, Utils.datetimelike_to_str(calc_date, dash=False))
+                factor_loading.drop(columns='date', inplace=True)
+                factor_loading[com_factor] = Utils.normalize_data(Utils.clean_extreme_value(np.array(factor_loading['factorvalue']).reshape((len(factor_loading), 1))))
+                factor_loading.drop(columns='factorvalue', inplace=True)
+                if Beta_factor.empty:
+                    Beta_factor = factor_loading
+                else:
+                    Beta_factor = pd.merge(left=Beta_factor, right=factor_loading, how='inner', on='id')
+            Beta_factor.set_index('id', inplace=True)
+            weight = pd.Series(risk_ct.Beta_CT.weight)
+            Beta_factor = (Beta_factor * weight).sum(axis=1)
+            Beta_factor.name = 'factorvalue'
+            Beta_factor.index.name = 'id'
+            Beta_factor = pd.DataFrame(Beta_factor)
+            Beta_factor.reset_index(inplace=True)
+            Beta_factor['date'] = Utils.get_trading_days(start=calc_date, ndays=2)[1]
+            # 保存Beta因子载荷
+            if save:
+                Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), Beta_factor.to_dict('list'), ['date', 'id', 'factorvalue'])
+
+
 if __name__ == '__main__':
     # pass
-    BETA.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True)
+    # BETA.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)
+    Beta.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)

@@ -25,9 +25,9 @@ import statsmodels.api as sm
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
-class LIQUIDITY(Factor):
+class Liquidity(Factor):
     """流动性因子类"""
-    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.LIQUID_CT.db_file)
+    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.LIQUIDITY_CT.db_file)
 
     @classmethod
     def _calc_factor_loading(cls, code, calc_date):
@@ -50,9 +50,9 @@ class LIQUIDITY(Factor):
             如果就是按失败, 返回None
         """
         # 读取个股过去252个交易日的日行情数据（非复权）
-        stom_days = risk_ct.LIQUID_CT.stom_days
-        stoq_months = risk_ct.LIQUID_CT.stoq_months
-        stoa_months = risk_ct.LIQUID_CT.stoa_months
+        stom_days = risk_ct.LIQUIDITY_CT.stom_days
+        stoq_months = risk_ct.LIQUIDITY_CT.stoq_months
+        stoa_months = risk_ct.LIQUIDITY_CT.stoa_months
         df_mkt_data = Utils.get_secu_daily_mkt(code, end=calc_date, ndays=stoa_months*stom_days, fq=False)
         if df_mkt_data is None or df_mkt_data.empty:
             return None
@@ -70,9 +70,9 @@ class LIQUIDITY(Factor):
         # stoa
         stoa = math.log(df_mkt_data['turnover1'].sum()/stoa_months)
         # liquidity = 0.35*stom + 0.35*stoq + 0.3*stoa
-        stom_weight = risk_ct.LIQUID_CT.stom_weight
-        stoq_weight = risk_ct.LIQUID_CT.stoq_weight
-        stoa_weight = risk_ct.LIQUID_CT.stoa_weight
+        stom_weight = risk_ct.LIQUIDITY_CT.stom_weight
+        stoq_weight = risk_ct.LIQUIDITY_CT.stoq_weight
+        stoa_weight = risk_ct.LIQUIDITY_CT.stoa_weight
         liquidity = stom_weight * stom + stoq_weight * stoq + stoa_weight * stoa
 
         return pd.Series([Utils.code_to_symbol(code), stom, stoq, stoa, liquidity], index=['code', 'stom', 'stoq', 'stoa', 'liquidity'])
@@ -90,7 +90,7 @@ class LIQUIDITY(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc LIQUIDITY factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        logging.info('[{}] Calc Liquidity factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
         liquidity_data = None
         try:
             liquidity_data = cls._calc_factor_loading(code, calc_date)
@@ -135,9 +135,9 @@ class LIQUIDITY(Factor):
             dict_stoq = None
             dict_stoa = None
             dict_raw_liquidity = None
-            logging.info('[%s] Calc LIQUIDITY factor loading.' % Utils.datetimelike_to_str(calc_date))
+            logging.info('[%s] Calc Liquidity factor loading.' % Utils.datetimelike_to_str(calc_date))
             # 遍历个股，计算个股LIQUIDITY因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.LIQUID_CT.listed_days)).strftime('%Y%m%d')
+            s = (calc_date - datetime.timedelta(days=risk_ct.LIQUIDITY_CT.listed_days)).strftime('%Y%m%d')
             stock_basics = all_stock_basics[all_stock_basics.list_date < s]
             ids = []
             stoms = []
@@ -212,4 +212,4 @@ class LIQUIDITY(Factor):
 
 if __name__ == '__main__':
     # pass
-    LIQUIDITY.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)
+    Liquidity.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)

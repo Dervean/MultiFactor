@@ -32,7 +32,8 @@ class ConsensusType(object):
     """
     一致预期数据类型
     """
-    PredictedEarings = auto()       # 预期盈利
+    PredictedEarings = auto()           # 预期盈利
+    PredictedEarningsGrowth = auto()    # 预期盈利增长率
 
 
 class Utils(object):
@@ -443,15 +444,17 @@ class Utils(object):
             return None
 
     @classmethod
-    def get_fin_basic_data(cls, code, report_date):
+    def get_fin_basic_data(cls, code, date, date_type='report_date'):
         """
         读取个股最新的主要财务指标数据
         Parameter:
         --------
         :param code: str
             证券代码，如600000或SH600000
-        :param report_date: datetime-like or str
-            报告期，格式：YYYY-MM-DD or YYYYMMDD
+        :param date: datetime-like or str
+            日期，格式：YYYY-MM-DD or YYYYMMDD
+        :param date_type: str, 默认为'report_date'
+            日期类型, 'report_date': 报告期; 'trading_date': 交易日
         :return: pd.Series
         --------
             0. ReportDate
@@ -477,7 +480,13 @@ class Utils(object):
             读取失败，返回None
         """
         code = cls.code_to_symbol(code)
-        date = cls.to_date(report_date)
+        date = cls.to_date(date)
+        if date_type == 'report_date':
+            pass
+        elif date_type == 'trading_date':
+            date = cls.get_fin_report_date(date)
+        else:
+            return None
         if not cls.is_fin_report_date(date):
             return None
         fin_basic_data_path = os.path.join(ct.DB_PATH, ct.FIN_BASIC_DATA_PATH, '%s.csv' % code)
@@ -502,15 +511,16 @@ class Utils(object):
         :return: pd.Series
         --------
         0. ReportDate: 报告期
-        1. MainOperateRevenue: 主营业务收入（万元）
-        2. MainOperateProfit: 主营业务利润（万元）
-        3. OperateProfit: 营业利润（万元）
-        4. InvestIncome: 投资收益（万元）
-        5. NonOperateNetIncome: 营业外收益净额（万元）
-        6. TotalProfit: 利润总额（万元）
-        7. NetProfit: 净利润（万元）
-        8. DeductedNetProfit: 扣除非经常性损益后净利润（万元）
-        9. NetOperateCashFlow: 经营活动现金流净额（万元）
+        1. BasicEPS: 基本每股收益(元)
+        2. MainOperateRevenue: 主营业务收入（万元）
+        3. MainOperateProfit: 主营业务利润（万元）
+        4. OperateProfit: 营业利润（万元）
+        5. InvestIncome: 投资收益（万元）
+        6. NonOperateNetIncome: 营业外收益净额（万元）
+        7. TotalProfit: 利润总额（万元）
+        8. NetProfit: 净利润（万元）
+        9. DeductedNetProfit: 扣除非经常性损益后净利润（万元）
+        10. NetOperateCashFlow: 经营活动现金流净额（万元）
         读取失败，返回None
         """
         code = cls.code_to_symbol(code)
@@ -540,8 +550,9 @@ class Utils(object):
         fin_basic_data3 = cls.get_fin_basic_data(code, date3)
         if fin_basic_data3 is None:
             return None
-        ttm_fin_basic_data = Series()
+        ttm_fin_basic_data = {}
         ttm_fin_basic_data['ReportDate'] = date1
+        ttm_fin_basic_data['BasicEPS'] = fin_basic_data1['BasicEPS'] + fin_basic_data2['BasicEPS'] - fin_basic_data3['BasicEPS']
         ttm_fin_basic_data['MainOperateRevenue'] = fin_basic_data1['MainOperateRevenue'] + fin_basic_data2['MainOperateRevenue'] - fin_basic_data3['MainOperateRevenue']
         ttm_fin_basic_data['MainOperateProfit'] = fin_basic_data1['MainOperateProfit'] + fin_basic_data2['MainOperateProfit'] - fin_basic_data3['MainOperateProfit']
         ttm_fin_basic_data['OperateProfit'] = fin_basic_data1['OperateProfit'] + fin_basic_data2['OperateProfit'] - fin_basic_data3['OperateProfit']
@@ -551,7 +562,7 @@ class Utils(object):
         ttm_fin_basic_data['NetProfit'] = fin_basic_data1['NetProfit'] + fin_basic_data2['NetProfit'] - fin_basic_data3['NetProfit']
         ttm_fin_basic_data['DeductedNetProfit'] = fin_basic_data1['DeductedNetProfit'] + fin_basic_data2['DeductedNetProfit'] - fin_basic_data3['DeductedNetProfit']
         ttm_fin_basic_data['NetOperateCashFlow'] = fin_basic_data1['NetOperateCashFlow'] + fin_basic_data2['NetOperateCashFlow'] - fin_basic_data3['NetOperateCashFlow']
-        return ttm_fin_basic_data
+        return Series(ttm_fin_basic_data)
 
     @classmethod
     def get_fin_summary_data(cls, code, report_date):
@@ -627,6 +638,59 @@ class Utils(object):
         """
 
     @classmethod
+    def get_hist_growth_data(cls, code, date, years):
+        """
+        计算个股过去N年复合增长率数据
+        Parameters:
+        --------
+        :param code: str
+            个股代码, 如SH600000, 600000
+        :param date: datetime-like or str
+            日期, 格式: YYYY-MM-DD or YYYYMMDD
+        :param years: int
+            过去N年
+        :return: pd.Series
+        --------
+            0. date: 日期
+            1. code: 代码
+            2. revenue: 主营业务收入复合增长率
+            2. netprofit: 净利润复合增长率
+            读取失败, 返回None
+        """
+        code = cls.code_to_symbol(code)
+        date = cls.to_date(date)
+        # 读取最新的ttm主要财务数据
+        latest_ttm_data = cls.get_ttm_fin_basic_data(code, date)
+        if latest_ttm_data is None:
+            return None
+        # 读取N年前的ttm主要财务数据
+        prevN_date = datetime.datetime(date.year-years, date.month, date.day)
+        prevN_ttm_data = cls.get_ttm_fin_basic_data(code, prevN_date)
+        if prevN_ttm_data is None:
+            return None
+        # 计算复合增长率数据
+        growth_data = pd.Series([date, code, 0.0, 0.0], index=['date', 'code', 'revenue', 'netprofit'])
+        if np.isnan(prevN_ttm_data['MainOperateRevenue']):
+            growth_data['revenue'] = np.nan
+        elif abs(prevN_ttm_data['MainOperateRevenue']) < ct.TINY_ABS_VALUE:
+            growth_data['revenue'] = np.nan
+        elif np.isnan(latest_ttm_data['MainOperateRevenue']):
+            growth_data['revenue'] = np.nan
+        else:
+            growth_data['revenue'] = pow(latest_ttm_data['MainOperateRevenue']/prevN_ttm_data['MainOperateRevenue'], 1/years) - 1
+
+        if np.isnan(prevN_ttm_data['NetProfit']):
+            growth_data['netprofit'] = np.nan
+        elif abs(prevN_ttm_data['NetProfit']) < ct.TINY_ABS_VALUE:
+            growth_data['netprofit'] = np.nan
+        elif np.isnan(latest_ttm_data['NetProfit']):
+            growth_data['netprofit'] = np.nan
+        else:
+            growth_data['netprofit'] = pow(latest_ttm_data['NetProfit']/prevN_ttm_data['NetProfit'], 1/years) - 1
+
+        return growth_data
+
+    @classmethod
     def get_consensus_data(cls, date, code=None, consensus_type=ConsensusType.PredictedEarings):
         """
         读取个股指定交易日期的一致预期数据
@@ -643,6 +707,8 @@ class Utils(object):
         str_date = Utils.datetimelike_to_str(date, dash=False)
         if consensus_type == ConsensusType.PredictedEarings:
             consensus_path = os.path.join(ct.DB_PATH ,ct.CONSENSUS_PATH, '{}/{}_{}.csv'.format('predicted_earnings' ,'predictedearnings', str_date))
+        elif consensus_type == ConsensusType.PredictedEarningsGrowth:
+            consensus_path = os.path.join(ct.DB_PATH, ct.CONSENSUS_PATH, '{}/{}_{}.csv'.format('growth_data', 'consensus_growth_data', str_date))
         else:
             return None
         df_consensus = pd.read_csv(consensus_path, header=0)

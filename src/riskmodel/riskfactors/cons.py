@@ -17,22 +17,23 @@ LNCAP_CT = DottableDict({'db_file': 'RiskFactor/Size/LNCAP/LNCAP',
                          'listed_days': 180})
 
 # BETA风险因子的配置参数
-BETA_CT = DottableDict({'db_file': 'RiskFactor/BETA/BETA',           # Beta因子在因子数据库的相对路径
+BETA_CT = DottableDict({'db_file': 'RiskFactor/Beta/BETA/BETA',           # Beta因子在因子数据库的相对路径
                         'benchmark': 'SH000300',
                         'trailing': 252,
-                        'half_life': 63})
-
-# HSIGMA风险因子的配置参数
-HSIGMA_CT = DottableDict({'db_file': 'RiskFactor/HSIGMA/HSIGMA',
-                          'benchmark': 'SH000300',
-                          'trailing': 252,
-                          'half_life': 63})
+                        'half_life': 63,
+                        'listed_days': 180})
+Beta_CT = DottableDict({'db_file': 'RiskFactor/Beta/Beta',
+                        'component': ['BETA'],
+                        'weight': {'BETA': 1.0}})
 
 # RSTR风险因子的配置参数
-RSTR_CT = DottableDict({'db_file': 'RiskFactor/RSTR/RSTR',
+RSTR_CT = DottableDict({'db_file': 'RiskFactor/Momentum/RSTR/RSTR',
                         'trailing_start': 504,
                         'trailing_end': 21,
                         'half_life': 126})
+MOMENTUM_CT = DottableDict({'db_file': 'RiskFactor/Momentum/Momentum',
+                            'component': ['RSTR'],
+                            'weight': {'RSTR': 1.0}})
 
 # DASTD风险因子的配置参数
 DASTD_CT = DottableDict({'db_file': 'RiskFactor/DASTD/DASTD',
@@ -46,9 +47,23 @@ CMRA_CT = DottableDict({'db_file': 'RiskFactor/CMRA/CMRA',
                         'days_scale': 21,
                         'listed_days': 180})
 
+# HSIGMA风险因子的配置参数
+HSIGMA_CT = DottableDict({'db_file': 'RiskFactor/ResVolatility/HSIGMA/HSIGMA',
+                          'benchmark': 'SH000300',
+                          'trailing': 252,
+                          'half_life': 63})
+
+# ResVolatility风险因子的配置参数
+RESVOLATILITY_CT = DottableDict({'db_file': 'RiskFactor/ResVolatility/ResVolatility',
+                                 'component': ['DASTD', 'CMRA', 'HSIGMA'],
+                                 'weight': {'DASTD': 0.74, 'CMRA': 0.16, 'HSIGMA': 0.1}})
+
 # NLSIZE风险因子的配置参数
-NLSIZE_CT = DottableDict({'db_file': 'RiskFactor/NLSIZE/NLSIZE'
+NLSIZE_CT = DottableDict({'db_file': 'RiskFactor/NonlinearSize/NLSIZE/NLSIZE'
                           })
+NONLINEARSIZE_CT = DottableDict({'db_file': 'RiskFactor/NonlinearSize/NonlinearSize',
+                                 'component': ['NLSIZE'],
+                                 'weight': {'NLSIZE': 1.0}})
 
 # BTOP风险因子的配置参数
 BTOP_CT = DottableDict({'db_file': 'RiskFactor/BTOP/BTOP',
@@ -56,7 +71,7 @@ BTOP_CT = DottableDict({'db_file': 'RiskFactor/BTOP/BTOP',
                         })
 
 # LIQUIDITY风险因子的配置参数
-LIQUID_CT = DottableDict({'db_file': 'RiskFactor/LIQUIDITY/LIQUIDITY',
+LIQUIDITY_CT = DottableDict({'db_file': 'RiskFactor/Liquidity/Liquidity',
                           'stom_days': 21,
                           'stom_weight': 0.35,
                           'stoq_months': 3,
@@ -76,6 +91,19 @@ ETOP_CT = DottableDict({'db_file': 'RiskFactor/EarningsYield/ETOP/ETOP',
 EARNINGSYIELD_CT = DottableDict({'db_file': 'RiskFactor/EarningsYield/EarningsYield',
                                  'component': ['EPFWD', 'CETOP', 'ETOP'],
                                  'weight': {'EPFWD': 0.68, 'CETOP': 0.21, 'ETOP': 0.11}})
+
+# Growth风险因子的配置参数
+EGRLF_CT = DottableDict({'db_file': 'RiskFactor/Growth/EGRLF/EGRLF',
+                         'listed_days': 0})
+EGRSF_CT = DottableDict({'db_file': 'RiskFactor/Growth/EGRSF/EGRSF',
+                         'listed_days': 0})
+EGRO_CT = DottableDict({'db_file': 'RiskFactor/Growth/EGRO/EGRO',
+                        'listed_days': 0})
+SGRO_CT = DottableDict({'db_file': 'RiskFactor/Growth/SGRO/SGRO',
+                        'listed_days': 0})
+GROWTH_CT = DottableDict({'db_file': 'RiskFactor/Growth/Growth',
+                          'component': ['EGRLF', 'EGRSF', 'EGRO', 'SGRO'],
+                          'weight': {'EGRLF': 0.18, 'EGRSF': 0.11, 'EGRO': 0.24, 'SGRO': 0.47}})
 
 # Leverage风险因子的配置参数
 MLEV_CT = DottableDict({'db_file': 'RiskFactor/Leverage/MLEV/MLEV',
