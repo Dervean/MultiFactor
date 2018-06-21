@@ -157,10 +157,84 @@ class BTOP(Factor):
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_btop, ['date', 'id', 'factorvalue'])
             # 暂停180秒
             logging.info('Suspending for 180s.')
-            time.sleep(180)
+            # time.sleep(180)
         return dict_btop
+
+
+class Value(Factor):
+    """风险因子中的价值因子类"""
+    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.VALUE_CT.db_file)
+
+    @classmethod
+    def _calc_factor_loading(cls, code, calc_date):
+        pass
+
+    @classmethod
+    def _calc_factor_loading_proc(cls, code, calc_date, q):
+        pass
+
+    @classmethod
+    def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
+        """
+        计算指定日期的样本个股的因子载荷, 并保存至因子数据库
+        Parameters:
+        --------
+        :param start_date: datetime-like, str
+            开始日期, 格式: YYYY-MM-DD or YYYYMMDD
+        :param end_date: datetime-like, str
+            结束日期, 如果为None, 则只计算start_date日期的因子载荷, 格式: YYYY-MM-DD or YYYYMMDD
+        :param month_end: bool, 默认为True
+            如果为True, 则只计算月末时点的因子载荷
+        :param save: bool, 默认为True
+            是否保存至因子数据库
+        :param kwargs:
+            'multi_proc': bool, True=采用多进程, False=采用单进程, 默认为False
+        :return: dict
+            因子载荷数据
+        """
+        # 取得交易日序列
+        start_date = Utils.to_date(start_date)
+        if not end_date is None:
+            end_date = Utils.to_date(end_date)
+            trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
+        else:
+            trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
+        # 遍历交易日序列, 计算Value因子下各个成分因子的因子载荷
+        if 'multi_proc' not in kwargs:
+            kwargs['multi_proc'] = False
+        for calc_date in trading_days_series:
+            if month_end and (not Utils.is_month_end(calc_date)):
+                continue
+            # 计算各成分因子的因子载荷
+            for com_factor in risk_ct.VALUE_CT.component:
+                factor = eval(com_factor + '()')
+                factor.calc_factor_loading(start_date=calc_date, end_date=None, month_end=month_end, save=True, multi_proc=kwargs['multi_proc'])
+            # 合成Value因子载荷
+            value_factor = pd.DataFrame()
+            for com_factor in risk_ct.VALUE_CT.component:
+                factor_path = os.path.join(factor_ct.FACTOR_DB.db_path, eval('risk_ct.' + com_factor + '_CT')['db_file'])
+                factor_loading = Utils.read_factor_loading(factor_path, Utils.datetimelike_to_str(calc_date, dash=False))
+                factor_loading.drop(columns='date', inplace=True)
+                factor_loading[com_factor] = Utils.normalize_data(Utils.clean_extreme_value(np.array(factor_loading['factorvalue']).reshape((len(factor_loading), 1))))
+                factor_loading.drop(columns='factorvalue', inplace=True)
+                if value_factor.empty:
+                    value_factor = factor_loading
+                else:
+                    value_factor = pd.merge(left=value_factor, right=factor_loading, how='inner', on='id')
+                value_factor.set_index('id', inplace=True)
+                weight = pd.Series(risk_ct.VALUE_CT.weight)
+                value_factor = (value_factor * weight).sum(axis=1)
+                value_factor.name = 'factorvalue'
+                value_factor.index.name = 'id'
+                value_factor = pd.DataFrame(value_factor)
+                value_factor.reset_index(inplace=True)
+                value_factor['date'] = Utils.get_trading_days(start=calc_date, ndays=2)[1]
+                # 保存Value因子载荷
+                if save:
+                    Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), value_factor.to_dict('list'), ['date', 'id', 'factorvalue'])
 
 
 if __name__ == '__main__':
     # pass
-    BTOP.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
+    # BTOP.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
+    Value.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)

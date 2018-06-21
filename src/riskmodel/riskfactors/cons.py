@@ -36,13 +36,13 @@ MOMENTUM_CT = DottableDict({'db_file': 'RiskFactor/Momentum/Momentum',
                             'weight': {'RSTR': 1.0}})
 
 # DASTD风险因子的配置参数
-DASTD_CT = DottableDict({'db_file': 'RiskFactor/DASTD/DASTD',
+DASTD_CT = DottableDict({'db_file': 'RiskFactor/ResVolatility/DASTD/DASTD',
                          'trailing': 252,
                          'half_life': 42,
                          'listed_days': 180})
 
 # CMRA风险因子的配置参数
-CMRA_CT = DottableDict({'db_file': 'RiskFactor/CMRA/CMRA',
+CMRA_CT = DottableDict({'db_file': 'RiskFactor/ResVolatility/CMRA/CMRA',
                         'trailing': 12,
                         'days_scale': 21,
                         'listed_days': 180})
@@ -66,9 +66,13 @@ NONLINEARSIZE_CT = DottableDict({'db_file': 'RiskFactor/NonlinearSize/NonlinearS
                                  'weight': {'NLSIZE': 1.0}})
 
 # BTOP风险因子的配置参数
-BTOP_CT = DottableDict({'db_file': 'RiskFactor/BTOP/BTOP',
+BTOP_CT = DottableDict({'db_file': 'RiskFactor/Value/BTOP/BTOP',
                         'listed_days': 180
                         })
+
+VALUE_CT = DottableDict({'db_file': 'RiskFactor/Value/Value',
+                         'component': ['BTOP'],
+                         'weight': {'BTOP': 1.0}})
 
 # LIQUIDITY风险因子的配置参数
 LIQUIDITY_CT = DottableDict({'db_file': 'RiskFactor/Liquidity/Liquidity',
@@ -115,6 +119,9 @@ BLEV_CT =DottableDict({'db_file': 'RiskFactor/Leverage/BLEV/BLEV',
 LEVERAGE_CT = DottableDict({'db_file': 'RiskFactor/Leverage/Leverage',
                             'component': ['MLEV', 'DTOA', 'BLEV'],
                             'weight': {'MLEV': 0.38, 'DTOA': 0.35, 'BLEV': 0.27}})
+
+# 风险因子列表
+RISK_FACTORS = ['Size', 'Beta', 'Momentum', 'ResVolatility', 'NonlinearSize', 'Value', 'Liquidity', 'EarningsYield', 'Growth', 'Leverage']
 
 
 if __name__ == '__main__':
