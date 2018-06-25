@@ -57,7 +57,8 @@ class LNCAP(Factor):
         total_share = cap_struct.total - cap_struct.liquid_b - cap_struct.liquid_h
         # 计算总市值的自然对数值
         lncap = np.log(secu_close * total_share)
-        return pd.Series([Utils.code_to_symbol(code), lncap], index=['code', 'lncap'])
+        liquid_cap = secu_close * cap_struct.liquid_a
+        return pd.Series([Utils.code_to_symbol(code), lncap, liquid_cap], index=['code', 'lncap', 'liquid_cap'])
 
     @classmethod
     def _calc_factor_loading_proc(cls, code, calc_date, q):
@@ -110,6 +111,7 @@ class LNCAP(Factor):
         all_stock_basics = CDataHandler.DataApi.get_secu_basics()
         # 遍历交易日序列, 计算LNCAP因子载荷
         dict_lncap = None
+        dict_liquidcap = None
         for calc_date in trading_days_series:
             if month_end and (not Utils.is_month_end(calc_date)):
                 continue
@@ -119,6 +121,7 @@ class LNCAP(Factor):
             stock_basics = all_stock_basics[all_stock_basics.list_date < s]
             ids = []    # 个股代码list
             lncaps = [] # LNCAP因子值list
+            liquid_caps = []    # 流通市值因子list
 
             if 'multi_proc' not in kwargs:
                 kwargs['multi_proc'] = False
@@ -130,6 +133,7 @@ class LNCAP(Factor):
                     if lncap_data is not None:
                         ids.append(lncap_data['code'])
                         lncaps.append(lncap_data['lncap'])
+                        liquid_caps.append(lncap_data['liquid_cap'])
             else:
                 # 采用多进程并行计算LNCAP因子值
                 q = Manager().Queue()   # 队列, 用于进程间通信, 存储每个进程计算的因子载荷
@@ -142,11 +146,15 @@ class LNCAP(Factor):
                     lncap_data = q.get(True)
                     ids.append(lncap_data['code'])
                     lncaps.append(lncap_data['lncap'])
+                    liquid_caps.append(lncap_data['liquid_cap'])
 
             date_label = Utils.get_trading_days(start=calc_date, ndays=2)[1]
             dict_lncap = {'date': [date_label]*len(ids), 'id': ids, 'factorvalue': lncaps}
+            dict_liquidcap = {'date': [date_label]*len(ids), 'id': ids, 'factorvalue': liquid_caps}
+            liquidcap_path = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.LNCAP_CT.liquidcap_dbfile)
             if save:
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_lncap, ['date', 'id', 'factorvalue'])
+                Utils.factor_loading_persistent(liquidcap_path, Utils.datetimelike_to_str(calc_date, dash=False), dict_liquidcap, ['date', 'id', 'factorvalue'])
             # 暂停180秒
             logging.info('Suspending for 180s.')
             # time.sleep(180)

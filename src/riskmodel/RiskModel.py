@@ -1,6 +1,6 @@
 #!/usr/bin/env/ python3
 # -*- coding: utf-8 -*-
-# @Abstract: 
+# @Abstract: 风险模型类文件
 # @Filename: RIskModel
 # @Date:   : 2018-06-21 20:03
 # @Author  : YuJun

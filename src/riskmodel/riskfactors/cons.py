@@ -14,7 +14,8 @@ SIZE_CT = DottableDict({'db_file': 'RiskFactor/Size/Size',
                         'weight': {'LNCAP': 1.0}})
 
 LNCAP_CT = DottableDict({'db_file': 'RiskFactor/Size/LNCAP/LNCAP',
-                         'listed_days': 180})
+                         'liquidcap_dbfile': 'RiskFactor/Size/CAP/CAP',
+                         'listed_days': 0})
 
 # BETA风险因子的配置参数
 BETA_CT = DottableDict({'db_file': 'RiskFactor/Beta/BETA/BETA',           # Beta因子在因子数据库的相对路径
