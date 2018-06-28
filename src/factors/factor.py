@@ -8,6 +8,7 @@
 
 from src.util.utils import Utils
 import src.factors.cons as factor_ct
+import src.riskmodel.riskfactors.cons as risk_ct
 import pandas as pd
 from pandas import Series
 import numpy as np
@@ -15,7 +16,7 @@ import os
 
 class Factor(object):
     """因子基类"""
-    _db_file = ''   # 因子对应的在因子数据库的数据文件名(包含数据)
+    _db_file = ''       # 因子对应的在因子数据库的数据文件名(包含数据)
     # def __init__(self):
     #     self._db_file = ''  # 因子对应的在因子数据库的数据文件名(包含数据)
 
@@ -78,6 +79,88 @@ class Factor(object):
         :return: 添加因子载荷至队列q中
         """
         pass
+
+    @classmethod
+    def _calc_synthetic_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
+        """
+        计算指定日期的样本个股的合成因子的载荷，并保存至因子数据库
+        Parameters
+        --------
+        :param start_date: datetime-like, str
+            开始日期
+        :param end_date: datetime-like, str，默认None
+            结束日期，如果为None，则只计算start_date日期的因子载荷
+        :param month_end: bool，默认True
+            只计算月末时点的因子载荷，该参数只在end_date不为None时有效，并且不论end_date是否为None，都会计算第一天的因子载荷
+        :param save: 是否保存至因子数据库，默认为False
+        :return: 因子载荷，DataFrame
+        --------
+            因子载荷,DataFrame
+            0: ID, 证券ID，为索引
+            1: factorvalue, 因子载荷
+        """
+        # 取得交易日序列
+        start_date = Utils.to_date(start_date)
+        if end_date is not None:
+            end_date = Utils.to_date(end_date)
+            trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
+        else:
+            trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
+        # 遍历交易日序列, 计算合成因子下各个成分因子的因子载荷
+        if 'multi_proc' not in kwargs:
+            kwargs['multi_proc'] = False
+        for calc_date in trading_days_series:
+            if month_end and (not Utils.is_month_end(calc_date)):
+                continue
+            # 计算各成分因子的因子载荷
+            # for com_factor in eval('risk_ct.' + cls.__name__.upper() + '_CT')['component']:
+            #     factor = eval(com_factor + '()')
+            #     factor.calc_factor_loading(start_date=calc_date, end_date=None, month_end=month_end, save=save, multi_proc=kwargs['multi_proc'])
+            # 计算合成因子
+            synthetic_factor = pd.DataFrame()
+            df_industry_classify = Utils.get_industry_classify()    # 个股行业分类数据
+            for com_factor in eval('risk_ct.' + cls.__name__.upper() + '_CT')['component']:
+                factor_path = os.path.join(factor_ct.FACTOR_DB.db_path, eval('risk_ct.' + com_factor + '_CT')['db_file'])
+                factor_loading = Utils.read_factor_loading(factor_path, Utils.datetimelike_to_str(calc_date, dash=False))
+                factor_loading.drop(columns='date', inplace=True)
+                factor_loading.rename(columns={'factorvalue': com_factor}, inplace=True)
+                # 添加行业分类数据
+                factor_loading = pd.merge(left=factor_loading, right=df_industry_classify[['id', 'ind_code']], how='inner', on='id')
+                # 取得含缺失值的因子载荷数据
+                missingdata_factor = factor_loading[factor_loading[com_factor].isna()]
+                # 删除factor_loading中的缺失值
+                factor_loading.dropna(axis='index', how='any', inplace=True)
+                # 对factor_loading去极值、标准化
+                factor_loading = Utils.normalize_data(factor_loading, id='id', columns=com_factor, treat_outlier=True, weight='cap', calc_date=calc_date)
+                # 把missingdata_factor中的缺失值替换为行业均值
+                ind_codes = set(missingdata_factor['ind_code'])
+                ind_mean_factor = {}
+                for ind_code in ind_codes:
+                    ind_mean_factor[ind_code] = factor_loading[factor_loading['ind_code'] == ind_code][com_factor].mean()
+                for idx, missingdata in missingdata_factor.iterrows():
+                    missingdata_factor.loc[idx, com_factor] = ind_mean_factor[missingdata['ind_code']]
+                # 把missingdata_factor和factor_loading合并
+                factor_loading = pd.concat([factor_loading, missingdata_factor])
+                # 删除ind_code列
+                factor_loading.drop(columns='ind_code', inplace=True)
+                # merge成分因子
+                if synthetic_factor.empty:
+                    synthetic_factor = factor_loading
+                else:
+                    synthetic_factor = pd.merge(left=synthetic_factor, right=factor_loading, how='inner', on='id')
+
+            # 合成因子
+            synthetic_factor.set_index('id', inplace=True)
+            weight = pd.Series(eval('risk_ct.' + cls.__name__.upper() + '_CT')['weight'])
+            synthetic_factor = (synthetic_factor * weight).sum(axis=1)
+            synthetic_factor.name = 'factorvalue'
+            synthetic_factor.index.name = 'id'
+            synthetic_factor = pd.DataFrame(synthetic_factor)
+            synthetic_factor.reset_index(inplace=True)
+            synthetic_factor['date'] = Utils.get_trading_days(start=calc_date, ndays=2)[1]
+            # 保存synthetic_factor因子载荷
+            if save:
+                Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), synthetic_factor.to_dict('list'), ['date', 'id', 'factorvalue'])
 
     @classmethod
     def get_dependent_factors(cls, date):

@@ -658,6 +658,10 @@ class Growth(Factor):
 
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
+        cls._calc_synthetic_factor_loading(start_date=start_date, end_date=end_date, month_end=month_end, save=save, multi_proc=kwargs['multi_proc'])
+
+    @classmethod
+    def calc_factor_loading_(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
         """
         计算指定日期的样本个股的因子载荷, 并保存至因子数据库
         Parameters:
@@ -694,16 +698,62 @@ class Growth(Factor):
                 factor.calc_factor_loading(start_date=calc_date, end_date=None, month_end=month_end, save=save, multi_proc=kwargs['multi_proc'])
             # 合成Growth因子载荷
             growth_factor = pd.DataFrame()
+            df_industry_classify = Utils.get_industry_classify()    # 个股行业分类数据
             for com_factor in risk_ct.GROWTH_CT.component:
                 factor_path = os.path.join(factor_ct.FACTOR_DB.db_path, eval('risk_ct.' + com_factor + '_CT')['db_file'])
                 factor_loading = Utils.read_factor_loading(factor_path, Utils.datetimelike_to_str(calc_date, dash=False))
                 factor_loading.drop(columns='date', inplace=True)
-                factor_loading[com_factor] = Utils.normalize_data(Utils.clean_extreme_value(np.array(factor_loading['factorvalue']).reshape((len(factor_loading), 1))))
-                factor_loading.drop(columns='factorvalue', inplace=True)
+                # factor_loading[com_factor] = Utils.normalize_data(Utils.clean_extreme_value(np.array(factor_loading['factorvalue']).reshape((len(factor_loading), 1))))
+                # factor_loading.drop(columns='factorvalue', inplace=True)
+                factor_loading.rename(columns={'factorvalue': com_factor}, inplace=True)
+                # 添加行业分类数据
+                factor_loading = pd.merge(left=factor_loading, right=df_industry_classify[['id', 'ind_code']], how='inner', on='id')
+                # 取得含缺失值的因子载荷数据
+                missingdata_factor = factor_loading[factor_loading[com_factor].isna()]
+                # 删除factor_loading中的缺失值
+                factor_loading.dropna(axis='index', how='any', inplace=True)
+                # 对factor_loading去极值、标准化
+                factor_loading = Utils.normalize_data(factor_loading, id='id', columns=com_factor, treat_outlier=True, weight='cap', calc_date=calc_date)
+                # 把missingdata_factor中的缺失值替换为行业均值
+                ind_codes = set(missingdata_factor['ind_code'])
+                ind_mean_factor = {}
+                for ind_code in ind_codes:
+                    ind_mean_factor[ind_code] = factor_loading[factor_loading['ind_code'] == ind_code][com_factor].mean()
+                for idx, missingdata in missingdata_factor.iterrows():
+                    missingdata_factor.loc[idx, com_factor] = ind_mean_factor[missingdata['ind_code']]
+                # 把missingdata_factor和factor_loading合并
+                factor_loading = pd.concat([factor_loading, missingdata_factor])
+                # 删除ind_code列
+                factor_loading.drop(columns='ind_code', inplace=True)
+
                 if growth_factor.empty:
                     growth_factor = factor_loading
                 else:
                     growth_factor = pd.merge(left=growth_factor, right=factor_loading, how='inner', on='id')
+
+            # # 读取个股行业分类数据, 添加至growth_factor中
+            # df_industry_classify = Utils.get_industry_classify()
+            # growth_factor = pd.merge(left=growth_factor, right=df_industry_classify[['id', 'ind_code']])
+            # # 取得含缺失值的因子载荷数据
+            # missingdata_factor = growth_factor.loc[[ind for ind, data in growth_factor.iterrows() if data.hasnans]]
+            # # 删除growth_factot中的缺失值
+            # growth_factor.dropna(axis='index', how='any', inplace=True)
+            # # 对growth_factor去极值、标准化
+            # growth_factor = Utils.normalize_data(growth_factor, id='id', columns=risk_ct.GROWTH_CT.component, treat_outlier=True, weight='cap', calc_date=calc_date)
+            # # 把missingdata_factor中的缺失值替换为行业均值
+            # ind_codes = set(missingdata_factor['ind_code'])
+            # ind_mean_factor = {}
+            # for ind_code in ind_codes:
+            #     ind_mean_factor[ind_code] = growth_factor[growth_factor['ind_code'] == ind_code].mean()
+            # missingdata_label = {ind: missingdata_factor.columns[missingdata.isna()].tolist() for ind, missingdata in missingdata_factor.iterrows()}
+            # for ind, cols in missingdata_label.items():
+            #     missingdata_factor.loc[ind, cols] = ind_mean_factor[missingdata_factor.loc[ind, 'ind_code']][cols]
+            # # 把missingdata_factor和growth_factor合并
+            # growth_factor = pd.concat([growth_factor, missingdata_factor])
+            # # 删除ind_code列
+            # growth_factor.drop(columns='ind_code', inplace=True)
+
+            # 合成Growth因子
             growth_factor.set_index('id', inplace=True)
             weight = pd.Series(risk_ct.GROWTH_CT.weight)
             growth_factor = (growth_factor * weight).sum(axis=1)

@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.INFO,
 
 class BETA(Factor):
     """贝塔因子类"""
-    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.BETA_CT.db_file)
+    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.dBETA_CT.db_file)
 
     @classmethod
     def _calc_factor_loading(cls, code, calc_date):
@@ -50,12 +50,12 @@ class BETA(Factor):
             若计算失败, 返回None
         """
         # 取得个股复权行情数据
-        df_secu_quote = Utils.get_secu_daily_mkt(code, end=calc_date, ndays=risk_ct.BETA_CT.trailing+1, fq=True)
+        df_secu_quote = Utils.get_secu_daily_mkt(code, end=calc_date, ndays=risk_ct.dBETA_CT.trailing+1, fq=True)
         if df_secu_quote is None:
             return None
         df_secu_quote.reset_index(drop=True, inplace=True)
         # 取得基准复权行情数据
-        benchmark_code = risk_ct.BETA_CT.benchmark
+        benchmark_code = risk_ct.dBETA_CT.benchmark
         df_benchmark_quote = Utils.get_secu_daily_mkt(benchmark_code, end=calc_date, fq=True)
         if df_benchmark_quote is None:
             return None
@@ -71,7 +71,7 @@ class BETA(Factor):
         # 计算权重(指数移动加权平均)
         T = len(arr_benchmark_daily_ret)
         time_spans = sorted(range(T), reverse=True)
-        alpha = 1 - np.exp(np.log(0.5)/risk_ct.BETA_CT.half_life)
+        alpha = 1 - np.exp(np.log(0.5)/risk_ct.dBETA_CT.half_life)
         x = [1-alpha] * T
         y = [alpha] * (T-1)
         y.insert(0, 1)
@@ -140,7 +140,7 @@ class BETA(Factor):
                 continue
             logging.info('[%s] Calc BETA factor loading.' % Utils.datetimelike_to_str(calc_date))
             # 遍历个股, 计算个股BETA因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.BETA_CT.listed_days)).strftime('%Y%m%d')
+            s = (calc_date - datetime.timedelta(days=risk_ct.dBETA_CT.listed_days)).strftime('%Y%m%d')
             stock_basics = all_stock_basics[all_stock_basics.list_date < s]
             ids = []        # 个股代码list
             betas = []      # BETA因子值
@@ -186,7 +186,7 @@ class BETA(Factor):
 
 class Beta(Factor):
     """风险因子的Beta因子类"""
-    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.Beta_CT.db_file)
+    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.BETA_CT.db_file)
 
     @classmethod
     def _calc_factor_loading(cls, code, calc_date):
@@ -196,9 +196,12 @@ class Beta(Factor):
     def _calc_factor_loading_proc(cls, code, calc_date, q):
         pass
 
-
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
+        cls._calc_synthetic_factor_loading(start_date=start_date, end_date=end_date, month_end=month_end, save=save, multi_proc=kwargs['multi_proc'])
+
+    @classmethod
+    def calc_factor_loading_(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
         """
         计算指定日期的样本个股的因子载荷, 并保存至因子数据库
         Parameters:
@@ -230,12 +233,12 @@ class Beta(Factor):
             if month_end and (not Utils.is_month_end(calc_date)):
                 continue
             # 计算各成分因子的因子载荷
-            for com_factor in risk_ct.Beta_CT.component:
+            for com_factor in risk_ct.BETA_CT.component:
                 factor = eval(com_factor + '()')
                 factor.calc_factor_loading(start_date=calc_date, end_date=None, month_end=month_end, save=save, multi_proc=kwargs['multi_proc'])
             # 合成Beta因子载荷
             Beta_factor = pd.DataFrame()
-            for com_factor in risk_ct.Beta_CT.component:
+            for com_factor in risk_ct.BETA_CT.component:
                 factor_path = os.path.join(factor_ct.FACTOR_DB.db_path, eval('risk_ct.' + com_factor + '_CT')['db_file'])
                 factor_loading = Utils.read_factor_loading(factor_path, Utils.datetimelike_to_str(calc_date, dash=False))
                 factor_loading.drop(columns='date', inplace=True)
@@ -246,7 +249,7 @@ class Beta(Factor):
                 else:
                     Beta_factor = pd.merge(left=Beta_factor, right=factor_loading, how='inner', on='id')
             Beta_factor.set_index('id', inplace=True)
-            weight = pd.Series(risk_ct.Beta_CT.weight)
+            weight = pd.Series(risk_ct.BETA_CT.weight)
             Beta_factor = (Beta_factor * weight).sum(axis=1)
             Beta_factor.name = 'factorvalue'
             Beta_factor.index.name = 'id'

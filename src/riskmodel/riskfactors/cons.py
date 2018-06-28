@@ -18,12 +18,12 @@ LNCAP_CT = DottableDict({'db_file': 'RiskFactor/Size/LNCAP/LNCAP',
                          'listed_days': 0})
 
 # BETA风险因子的配置参数
-BETA_CT = DottableDict({'db_file': 'RiskFactor/Beta/BETA/BETA',           # Beta因子在因子数据库的相对路径
-                        'benchmark': 'SH000300',
-                        'trailing': 252,
-                        'half_life': 63,
-                        'listed_days': 180})
-Beta_CT = DottableDict({'db_file': 'RiskFactor/Beta/Beta',
+dBETA_CT = DottableDict({'db_file': 'RiskFactor/Beta/BETA/BETA',           # Beta因子在因子数据库的相对路径
+                         'benchmark': 'SH000300',
+                         'trailing': 252,
+                         'half_life': 63,
+                         'listed_days': 180})
+BETA_CT = DottableDict({'db_file': 'RiskFactor/Beta/Beta',
                         'component': ['BETA'],
                         'weight': {'BETA': 1.0}})
 

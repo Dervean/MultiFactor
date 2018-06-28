@@ -15,8 +15,10 @@ import datetime
 import shelve
 from enum import Enum, auto
 from src.util import cons as ct
+import src.riskmodel.riskfactors.cons as risk_ct
 from src.util.Cache import Cache
 import tushare as ts
+from collections import Iterable
 
 
 class SecuTradingStatus(Enum):
@@ -925,7 +927,7 @@ class Utils(object):
                 DataFrame(dict_factor_loading).to_csv(db_file, index=False, columns=columns)
 
     @classmethod
-    def read_factor_loading(cls, db_file, str_key, code=None, nan_value=None):
+    def read_factor_loading(cls, db_file, str_key, code=None, nan_value=None, drop_na=False):
         """
         从因子载荷持久化文件中读取指定str_key的因子载荷值
         Parameters
@@ -938,6 +940,8 @@ class Utils(object):
             个股代码, 如SH600000, 600000
         :param nan_value: object, 默认为None
             如果不为None，那么缺失值用nan_value替换
+        :param drop_na: bool, 默认False
+            是否删除含有NaN值的行
         :return: DataFrame or Series，因子载荷
         --------
             DataFrame(code==None) or Series(code<>None):
@@ -967,6 +971,8 @@ class Utils(object):
                 df_factor_loading = df_factor_loading.iloc[0]
         if nan_value is not None:
             df_factor_loading = df_factor_loading.fillna(nan_value)
+        if drop_na:
+            df_factor_loading.dropna(axis=0, how='any')
         return df_factor_loading
 
     @classmethod
@@ -991,18 +997,80 @@ class Utils(object):
         return raw_data
 
     @classmethod
-    def normalize_data(cls, arr_data):
+    def normalize_data(cls, raw_data, id=None, columns=None, treat_outlier=False, weight='eq', calc_date=None):
         """
         对数据进行标准化
-        :param arr_data: np.array
+        :param raw_data: pd.DataFrame or np.ndarray
             需要进行标准化处理的原始数据
-        :return: np.array
+        :param id: str, 默认None
+            个股代码列名
+            当raw_data为pd.DataFrame, weight='cap'时, 需指定个股代码列名, 用于计算权重
+        :param columns: str, list, 默认为None
+            当raw_data为pd.DataFrame时, 指定需要标准化的列; 如果为None, 计算除参数id指定的列外其他所有列的标准化
+            当raw_data为np.ndarray时, 计算所有列的标准化
+        :param treat_outlier: bool, 默认False
+            是否处理极值
+        :param weight: str
+            计算标准化时均值的加权方式
+            'eq': 采用等权重计算均值; 'cap': 采用流通市值加权计算均值, 此时需要用参数id指定的个股证券列计算流通市值
+        :param calc_date: datetime-like or str, 默认None
+            标准化计算日期, 当weight='cap'时，用于读取个股市值数据
+        :return: pd.DataFrame, np.ndarray, 与raw_data类型一致
             标准化处理后的数据
         """
-        raw_data = arr_data.copy()
-        u = np.mean(raw_data, axis=0)
-        s = np.std(raw_data, axis=0)
-        return (raw_data - u)/s
+        # raw_data = arr_data.copy()
+        # u = np.mean(raw_data, axis=0)
+        # s = np.std(raw_data, axis=0)
+        # return (raw_data - u)/s
+
+        if isinstance(raw_data, np.ndarray):
+            arr_data = raw_data.copy()
+            if treat_outlier:
+                arr_data = cls.clean_extreme_value(arr_data)
+            u = np.mean(arr_data, axis=0)
+            s = np.std(arr_data, axis=0)
+            return (arr_data - u)/s
+        elif isinstance(raw_data, pd.DataFrame):
+            df_data = raw_data.copy()
+            if weight == 'eq':
+                if columns is None:
+                    cols = [col for col in df_data.columns.tolist() if col != id]
+                elif isinstance(columns, Iterable):
+                    cols = [col for col in df_data.columns.tolist() if (col in columns) & (col != id)]
+                else:
+                    cols = [col for col in df_data.columns.tolist() if (col == columns) & (col != id)]
+                arr_data = np.array(df_data[cols]).reshape((len(df_data), len(cols)))
+                if treat_outlier:
+                    arr_data = cls.clean_extreme_value(arr_data)
+                u = np.mean(arr_data, axis=0)
+                s = np.std(arr_data, axis=0)
+                df_data[cols] = (arr_data - u)/s
+                return df_data
+            elif weight == 'cap':
+                if id is None:
+                    return raw_data
+                else:
+                    cap_factor_path = os.path.join(ct.DB_PATH, risk_ct.LNCAP_CT.liquidcap_dbfile)
+                    df_cap_factor = cls.read_factor_loading(cap_factor_path, cls.datetimelike_to_str(calc_date, dash=False), drop_na=True)
+                    df_cap_factor.drop(columns='date', inplace=True)
+                    df_cap_factor.rename(columns={'id': id, 'factorvalue': 'cap'}, inplace=True)
+                    df_data = pd.merge(left=df_data, right=df_cap_factor, how='inner', on=id)
+                    df_data['cap'] = df_data['cap'] / df_data['cap'].sum()
+                    if columns is None:
+                        cols = [col for col in df_data.columns.tolist() if col not in [id, 'cap']]
+                    elif isinstance(columns, Iterable):
+                        cols = [col for col in df_data.columns.tolist() if (col in columns) & (col not in [id, 'cap'])]
+                    else:
+                        cols = [col for col in df_data.columns.tolist() if (col == columns) & (col not in [id, 'cap'])]
+                    arr_data = np.array(df_data[cols]).reshape((len(df_data), len(cols)))
+                    if treat_outlier:
+                        arr_data = cls.clean_extreme_value(arr_data)
+                    weight = np.array(df_data['cap']).reshape((1, len(df_data)))
+                    u = np.dot(weight, arr_data)
+                    s = np.std(arr_data, axis=0)
+                    df_data[cols] = (arr_data - u)/s
+                    df_data.drop(columns='cap', inplace=True)
+                    return df_data
 
     @classmethod
     def get_backtest_data(cls, backtest_path, start_date):
