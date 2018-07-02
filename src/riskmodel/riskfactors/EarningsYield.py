@@ -85,8 +85,9 @@ class EPFWD(Factor):
             epfwd_data = cls._calc_factor_loading(code, calc_date)
         except Exception as e:
             print(e)
-        if epfwd_data is not None:
-            q.put(epfwd_data)
+        if epfwd_data is None:
+            epfwd_data = pd.Series([Utils.code_to_symbol(code), np.nan], index=['code', 'epfwd'])
+        q.put(epfwd_data)
 
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
@@ -134,7 +135,10 @@ class EPFWD(Factor):
                 for _, stock_info in stock_basics.iterrows():
                     logging.info("[%s] Calc %s's EPFWD factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     epfwd_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
-                    if epfwd_data is not None:
+                    if epfwd_data is None:
+                        ids.append(Utils.code_to_symbol(stock_info.symbol))
+                        epfwds.append(np.nan)
+                    else:
                         ids.append(epfwd_data['code'])
                         epfwds.append(epfwd_data['epfwd'])
             else:
@@ -219,8 +223,9 @@ class CETOP(Factor):
             cetop_data = cls._calc_factor_loading(code, calc_date)
         except Exception as e:
             print(e)
-        if cetop_data is not None:
-            q.put(cetop_data)
+        if cetop_data is None:
+            cetop_data = pd.Series([Utils.code_to_symbol(code), np.nan], index=['code', 'cetop'])
+        q.put(cetop_data)
 
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
@@ -268,7 +273,10 @@ class CETOP(Factor):
                 for _, stock_info in stock_basics.iterrows():
                     logging.info("[%s] Calc %s's CETOP factor loading." % (Utils.datetimelike_to_str(calc_date), stock_info.symbol))
                     cetop_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
-                    if cetop_data is not None:
+                    if cetop_data is None:
+                        ids.append(Utils.code_to_symbol(stock_info.symbol))
+                        cetops.append(np.nan)
+                    else:
                         ids.append(cetop_data['code'])
                         cetops.append(cetop_data['cetop'])
             else:
@@ -353,8 +361,9 @@ class ETOP(Factor):
             etop_data = cls._calc_factor_loading(code, calc_date)
         except Exception as e:
             print(e)
-        if etop_data is not None:
-            q.put(etop_data)
+        if etop_data is None:
+            etop_data = pd.Series([Utils.code_to_symbol(code), np.nan], index=['code', 'etop'])
+        q.put(etop_data)
 
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
@@ -402,7 +411,10 @@ class ETOP(Factor):
                 for _, stock_info in stock_basics.iterrows():
                     logging.info("[%s] Calc %s's ETOP factor loading." % (Utils.datetimelike_to_str(calc_date), stock_info.symbol))
                     etop_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
-                    if etop_data is not None:
+                    if etop_data is None:
+                        ids.append(Utils.code_to_symbol(stock_info.symbol))
+                        etops.append(np.nan)
+                    else:
                         ids.append(etop_data['code'])
                         etops.append(etop_data['etop'])
             else:
@@ -442,7 +454,10 @@ class EarningsYield(Factor):
 
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
-        cls._calc_synthetic_factor_loading(start_date=start_date, end_date=end_date, month_end=month_end, save=save, multi_proc=kwargs['multi_proc'])
+        com_factors = []
+        for com_factor in risk_ct.EARNINGSYIELD_CT.component:
+            com_factors.append(eval(com_factor + '()'))
+        cls._calc_synthetic_factor_loading(start_date=start_date, end_date=end_date, month_end=month_end, save=save, multi_proc=kwargs['multi_proc'], com_factors=com_factors)
 
     @classmethod
     def calc_factor_loading_(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
@@ -509,4 +524,4 @@ if __name__ == '__main__':
     # EPFWD.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
     # CETOP.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
     # ETOP.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
-    EarningsYield.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
+    EarningsYield.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)

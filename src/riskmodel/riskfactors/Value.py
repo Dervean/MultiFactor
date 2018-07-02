@@ -175,7 +175,10 @@ class Value(Factor):
 
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
-        cls._calc_synthetic_factor_loading(start_date=start_date, end_date=end_date, month_end=month_end, save=save, multi_proc=kwargs['multi_proc'])
+        com_factors = []
+        for com_factor in risk_ct.VALUE_CT.component:
+            com_factors.append(eval(com_factor + '()'))
+        cls._calc_synthetic_factor_loading(start_date=start_date, end_date=end_date, month_end=month_end, save=save, multi_proc=kwargs['multi_proc'], com_factors=com_factors)
 
     @classmethod
     def calc_factor_loading_(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):

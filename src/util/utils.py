@@ -924,7 +924,7 @@ class Utils(object):
                     db.close()
             elif perst_type == 'csv':
                 db_file += '_%s.csv' % str_key
-                DataFrame(dict_factor_loading).to_csv(db_file, index=False, columns=columns)
+                DataFrame(dict_factor_loading).to_csv(db_file, index=False, columns=columns, na_rep='NaN')
 
     @classmethod
     def read_factor_loading(cls, db_file, str_key, code=None, nan_value=None, drop_na=False):

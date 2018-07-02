@@ -27,9 +27,9 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 
-class BETA(Factor):
+class DBETA(Factor):
     """贝塔因子类"""
-    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.dBETA_CT.db_file)
+    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.DBETA_CT.db_file)
 
     @classmethod
     def _calc_factor_loading(cls, code, calc_date):
@@ -50,12 +50,12 @@ class BETA(Factor):
             若计算失败, 返回None
         """
         # 取得个股复权行情数据
-        df_secu_quote = Utils.get_secu_daily_mkt(code, end=calc_date, ndays=risk_ct.dBETA_CT.trailing+1, fq=True)
+        df_secu_quote = Utils.get_secu_daily_mkt(code, end=calc_date, ndays=risk_ct.DBETA_CT.trailing+1, fq=True)
         if df_secu_quote is None:
             return None
         df_secu_quote.reset_index(drop=True, inplace=True)
         # 取得基准复权行情数据
-        benchmark_code = risk_ct.dBETA_CT.benchmark
+        benchmark_code = risk_ct.DBETA_CT.benchmark
         df_benchmark_quote = Utils.get_secu_daily_mkt(benchmark_code, end=calc_date, fq=True)
         if df_benchmark_quote is None:
             return None
@@ -71,7 +71,7 @@ class BETA(Factor):
         # 计算权重(指数移动加权平均)
         T = len(arr_benchmark_daily_ret)
         time_spans = sorted(range(T), reverse=True)
-        alpha = 1 - np.exp(np.log(0.5)/risk_ct.dBETA_CT.half_life)
+        alpha = 1 - np.exp(np.log(0.5)/risk_ct.DBETA_CT.half_life)
         x = [1-alpha] * T
         y = [alpha] * (T-1)
         y.insert(0, 1)
@@ -103,8 +103,9 @@ class BETA(Factor):
             beta_data = cls._calc_factor_loading(code, calc_date)
         except Exception as e:
             print(e)
-        if beta_data is not None:
-            q.put(beta_data)
+        if beta_data is None:
+            beta_data = pd.Series([Utils.code_to_symbol(code), np.nan, np.nan], index=['code', 'beta', 'hsigma'])
+        q.put(beta_data)
 
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
@@ -140,7 +141,7 @@ class BETA(Factor):
                 continue
             logging.info('[%s] Calc BETA factor loading.' % Utils.datetimelike_to_str(calc_date))
             # 遍历个股, 计算个股BETA因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.dBETA_CT.listed_days)).strftime('%Y%m%d')
+            s = (calc_date - datetime.timedelta(days=risk_ct.DBETA_CT.listed_days)).strftime('%Y%m%d')
             stock_basics = all_stock_basics[all_stock_basics.list_date < s]
             ids = []        # 个股代码list
             betas = []      # BETA因子值
@@ -153,7 +154,11 @@ class BETA(Factor):
                 for _, stock_info in stock_basics.iterrows():
                     logging.info("[%s] Calc %s's BETA and HSIGMA factor data." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     beta_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
-                    if beta_data is not None:
+                    if beta_data is None:
+                        ids.append(Utils.code_to_symbol(stock_info.symbol))
+                        betas.append(np.nan)
+                        hsigmas.append(np.nan)
+                    else:
                         ids.append(beta_data['code'])
                         betas.append(beta_data['beta'])
                         hsigmas.append(beta_data['hsigma'])
@@ -180,7 +185,7 @@ class BETA(Factor):
                 Utils.factor_loading_persistent(hsigma_path, Utils.datetimelike_to_str(calc_date, dash=False), dict_hsigma, ['date', 'id', 'factorvalue'])
             # 休息180秒
             logging.info('Suspending for 180s.')
-            time.sleep(180)
+            # time.sleep(180)
         return dict_beta
 
 
@@ -198,7 +203,10 @@ class Beta(Factor):
 
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
-        cls._calc_synthetic_factor_loading(start_date=start_date, end_date=end_date, month_end=month_end, save=save, multi_proc=kwargs['multi_proc'])
+        com_factors = []
+        for com_factor in risk_ct.BETA_CT.component:
+            com_factors.append(eval(com_factor + '()'))
+        cls._calc_synthetic_factor_loading(start_date=start_date, end_date=end_date, month_end=month_end, save=save, multi_proc=kwargs['multi_proc'], com_factors=com_factors)
 
     @classmethod
     def calc_factor_loading_(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):

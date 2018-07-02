@@ -18,14 +18,14 @@ LNCAP_CT = DottableDict({'db_file': 'RiskFactor/Size/LNCAP/LNCAP',
                          'listed_days': 0})
 
 # BETA风险因子的配置参数
-dBETA_CT = DottableDict({'db_file': 'RiskFactor/Beta/BETA/BETA',           # Beta因子在因子数据库的相对路径
+DBETA_CT = DottableDict({'db_file': 'RiskFactor/Beta/BETA/BETA',           # Beta因子在因子数据库的相对路径
                          'benchmark': 'SH000300',
                          'trailing': 252,
                          'half_life': 63,
-                         'listed_days': 180})
+                         'listed_days': 0})
 BETA_CT = DottableDict({'db_file': 'RiskFactor/Beta/Beta',
-                        'component': ['BETA'],
-                        'weight': {'BETA': 1.0}})
+                        'component': ['DBETA'],
+                        'weight': {'DBETA': 1.0}})
 
 # RSTR风险因子的配置参数
 RSTR_CT = DottableDict({'db_file': 'RiskFactor/Momentum/RSTR/RSTR',
@@ -76,15 +76,30 @@ VALUE_CT = DottableDict({'db_file': 'RiskFactor/Value/Value',
                          'weight': {'BTOP': 1.0}})
 
 # LIQUIDITY风险因子的配置参数
+STOM_CT = DottableDict({'db_file': 'RiskFactor/Liquidity/STOM/STOM',
+                        'month_days': 21,
+                        'months': 1,
+                        'listed_days': 0})
+STOQ_CT = DottableDict({'db_file': 'RiskFactor/Liquidity/STOQ/STOQ',
+                        'month_days': 21,
+                        'months': 3,
+                        'listed_days': 0})
+STOA_CT = DottableDict({'db_file': 'RiskFactor/Liquidity/STOA/STOA',
+                        'month_days': 21,
+                        'months': 12,
+                        'listed_days': 0})
 LIQUIDITY_CT = DottableDict({'db_file': 'RiskFactor/Liquidity/Liquidity',
-                          'stom_days': 21,
-                          'stom_weight': 0.35,
-                          'stoq_months': 3,
-                          'stoq_weight': 0.35,
-                          'stoa_months': 12,
-                          'stoa_weight': 0.3,
-                          'listed_days': 180
-                          })
+                             'component': ['STOM', 'STOQ', 'STOA'],
+                             'weight': {'STOM': 0.35, 'STOQ': 0.35, 'STOA': 0.3}})
+# LIQUIDITY_CT = DottableDict({'db_file': 'RiskFactor/Liquidity/Liquidity',
+#                           'stom_days': 21,
+#                           'stom_weight': 0.35,
+#                           'stoq_months': 3,
+#                           'stoq_weight': 0.35,
+#                           'stoa_months': 12,
+#                           'stoa_weight': 0.3,
+#                           'listed_days': 180
+#                           })
 
 # EarningsYield风险因子的配置参数
 EPFWD_CT = DottableDict({'db_file': 'RiskFactor/EarningsYield/EPFWD/EPFWD',

@@ -93,6 +93,9 @@ class Factor(object):
         :param month_end: bool，默认True
             只计算月末时点的因子载荷，该参数只在end_date不为None时有效，并且不论end_date是否为None，都会计算第一天的因子载荷
         :param save: 是否保存至因子数据库，默认为False
+        :param kwargs:
+            'multi_proc': bool, True=采用多进程, False=采用单进程, 默认为False
+            'com_factors': list, 成分因子的类实例list
         :return: 因子载荷，DataFrame
         --------
             因子载荷,DataFrame
@@ -116,6 +119,8 @@ class Factor(object):
             # for com_factor in eval('risk_ct.' + cls.__name__.upper() + '_CT')['component']:
             #     factor = eval(com_factor + '()')
             #     factor.calc_factor_loading(start_date=calc_date, end_date=None, month_end=month_end, save=save, multi_proc=kwargs['multi_proc'])
+            for com_factor in kwargs['com_factors']:
+                com_factor.calc_factor_loading(start_date=calc_date, end_date=None, month_end=month_end, save=save, multi_proc=kwargs['multi_proc'])
             # 计算合成因子
             synthetic_factor = pd.DataFrame()
             df_industry_classify = Utils.get_industry_classify()    # 个股行业分类数据
