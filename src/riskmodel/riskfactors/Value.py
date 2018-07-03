@@ -86,8 +86,9 @@ class BTOP(Factor):
             btop_data = cls._calc_factor_loading(code, calc_date)
         except Exception as e:
             print(e)
-        if btop_data is not None:
-            q.put(btop_data)
+        if btop_data is None:
+            btop_data = pd.Series([Utils.code_to_symbol(code), np.nan], index=['code', 'btop'])
+        q.put(btop_data)
 
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
@@ -135,7 +136,10 @@ class BTOP(Factor):
                 for _, stock_info in stock_basics.iterrows():
                     logging.info("[%s] Calc %s's BTOP factor loading." % (Utils.datetimelike_to_str(calc_date, dash=True), stock_info.symbol))
                     btop_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
-                    if btop_data is not None:
+                    if btop_data is None:
+                        ids.append(Utils.code_to_symbol(stock_info.symbol))
+                        btops.append(np.nan)
+                    else:
                         ids.append(btop_data['code'])
                         btops.append(btop_data['btop'])
             else:

@@ -91,8 +91,9 @@ class MLEV(Factor):
             mlev_data = cls._calc_factor_loading(code, calc_date)
         except Exception as e:
             print(e)
-        if mlev_data is not None:
-            q.put(mlev_data)
+        if mlev_data is None:
+            mlev_data = pd.Series([Utils.code_to_symbol(code), np.nan], index=['code', 'mlev'])
+        q.put(mlev_data)
 
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
@@ -140,7 +141,10 @@ class MLEV(Factor):
                 for _, stock_info in stock_basics.iterrows():
                     logging.info("[%s] Calc %s's MLEV factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     mlev_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
-                    if mlev_data is not None:
+                    if mlev_data is None:
+                        ids.append(Utils.code_to_symbol(stock_info.symbol))
+                        mlevs.append(np.nan)
+                    else:
                         ids.append(mlev_data['code'])
                         mlevs.append(mlev_data['mlev'])
             else:
@@ -226,8 +230,9 @@ class DTOA(Factor):
             dtoa_data = cls._calc_factor_loading(code, calc_date)
         except Exception as e:
             print(e)
-        if dtoa_data is not None:
-            q.put(dtoa_data)
+        if dtoa_data is None:
+            dtoa_data = pd.Series([Utils.code_to_symbol(code), np.nan], index=['code', 'dtoa'])
+        q.put(dtoa_data)
 
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
@@ -275,7 +280,10 @@ class DTOA(Factor):
                 for _, stock_info in stock_basics.iterrows():
                     logging.info("[%s] Cacl %s's DTOA factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     dtoa_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
-                    if dtoa_data is not None:
+                    if dtoa_data is None:
+                        ids.append(Utils.code_to_symbol(stock_info.symbol))
+                        dtoas.append(np.nan)
+                    else:
                         ids.append(dtoa_data['code'])
                         dtoas.append(dtoa_data['dtoa'])
             else:
@@ -363,8 +371,9 @@ class BLEV(Factor):
             blev_data = cls._calc_factor_loading(code, calc_date)
         except Exception as e:
             print(e)
-        if blev_data is not None:
-            q.put(blev_data)
+        if blev_data is None:
+            blev_data = pd.Series([Utils.code_to_symbol(code), np.nan], index=['code', 'blev'])
+        q.put(blev_data)
 
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
@@ -412,7 +421,10 @@ class BLEV(Factor):
                 for _, stock_info in stock_basics.iterrows():
                     logging.info("[%s] Calc %s's BLEV factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     blev_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
-                    if blev_data is not None:
+                    if blev_data is None:
+                        ids.append(Utils.code_to_symbol(stock_info.symbol))
+                        blevs.append(np.nan)
+                    else:
                         ids.append(blev_data['code'])
                         blevs.append(blev_data['blev'])
             else:

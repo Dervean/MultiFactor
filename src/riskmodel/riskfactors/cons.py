@@ -31,7 +31,8 @@ BETA_CT = DottableDict({'db_file': 'RiskFactor/Beta/Beta',
 RSTR_CT = DottableDict({'db_file': 'RiskFactor/Momentum/RSTR/RSTR',
                         'trailing_start': 504,
                         'trailing_end': 21,
-                        'half_life': 126})
+                        'half_life': 126,
+                        'listed_days': 0})
 MOMENTUM_CT = DottableDict({'db_file': 'RiskFactor/Momentum/Momentum',
                             'component': ['RSTR'],
                             'weight': {'RSTR': 1.0}})
@@ -40,13 +41,13 @@ MOMENTUM_CT = DottableDict({'db_file': 'RiskFactor/Momentum/Momentum',
 DASTD_CT = DottableDict({'db_file': 'RiskFactor/ResVolatility/DASTD/DASTD',
                          'trailing': 252,
                          'half_life': 42,
-                         'listed_days': 180})
+                         'listed_days': 0})
 
 # CMRA风险因子的配置参数
 CMRA_CT = DottableDict({'db_file': 'RiskFactor/ResVolatility/CMRA/CMRA',
                         'trailing': 12,
                         'days_scale': 21,
-                        'listed_days': 180})
+                        'listed_days': 0})
 
 # HSIGMA风险因子的配置参数
 HSIGMA_CT = DottableDict({'db_file': 'RiskFactor/ResVolatility/HSIGMA/HSIGMA',
@@ -68,7 +69,7 @@ NONLINEARSIZE_CT = DottableDict({'db_file': 'RiskFactor/NonlinearSize/NonlinearS
 
 # BTOP风险因子的配置参数
 BTOP_CT = DottableDict({'db_file': 'RiskFactor/Value/BTOP/BTOP',
-                        'listed_days': 180
+                        'listed_days': 0
                         })
 
 VALUE_CT = DottableDict({'db_file': 'RiskFactor/Value/Value',

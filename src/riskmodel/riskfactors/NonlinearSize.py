@@ -79,11 +79,12 @@ class NLSIZE(Factor):
             result = model.fit()
             # 对残差值进行缩尾处理和标准化
             n = len(result.resid)
-            arr_resid = result.resid.reshape(n, 1)
-            arr_resid_winsorized = Utils.clean_extreme_value(arr_resid)
-            arr_resid_standardized = Utils.normalize_data(arr_resid_winsorized)
+            arr_resid = result.resid
+            # arr_resid = result.resid.reshape(n, 1)
+            # arr_resid_winsorized = Utils.clean_extreme_value(arr_resid)
+            # arr_resid_standardized = Utils.normalize_data(arr_resid_winsorized)
             # 保存NLSIZE因子载荷数据
-            dict_nlsize = dict({'date': df_lncap['date'].values, 'id': df_lncap['id'].values, 'factorvalue': arr_resid_standardized.reshape(n,)})
+            dict_nlsize = dict({'date': df_lncap['date'].values, 'id': df_lncap['id'].values, 'factorvalue': arr_resid})
             if save:
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_nlsize, ['date', 'id', 'factorvalue'])
 
@@ -172,4 +173,4 @@ class NonlinearSize(Factor):
 if __name__ == '__main__':
     # pass
     # NLSIZE.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True)
-    NonlinearSize.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True)
+    NonlinearSize.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)

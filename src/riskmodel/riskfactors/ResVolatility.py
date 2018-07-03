@@ -87,8 +87,9 @@ class DASTD(Factor):
             dastd_data = cls._calc_factor_loading(code, calc_date)
         except Exception as e:
             print(e)
-        if dastd_data is not None:
-            q.put(dastd_data)
+        if dastd_data is None:
+            dastd_data = pd.Series([Utils.code_to_symbol(code), np.nan], index=['code', 'dastd'])
+        q.put(dastd_data)
 
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
@@ -136,7 +137,10 @@ class DASTD(Factor):
                 for _, stock_info in stock_basics.iterrows():
                     logging.info("[%s] Calc %s's DASTD factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     dastd_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
-                    if dastd_data is not None:
+                    if dastd_data is None:
+                        ids.append(Utils.code_to_symbol(stock_info.symbol))
+                        dastds.append(np.nan)
+                    else:
                         ids.append(dastd_data['code'])
                         dastds.append(dastd_data['dastd'])
             else:
@@ -270,8 +274,9 @@ class CMRA(Factor):
             cmra_data = cls._calc_factor_loading(code, calc_date)
         except Exception as e:
             print(e)
-        if cmra_data is not None:
-            q.put(cmra_data)
+        if cmra_data is None:
+            cmra_data = pd.Series([Utils.code_to_symbol(code), np.nan], index=['code', 'cmra'])
+        q.put(cmra_data)
 
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
@@ -319,7 +324,10 @@ class CMRA(Factor):
                 for _, stock_info in stock_basics.iterrows():
                     logging.info("[%s] Calc %s's CMRA factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     cmra_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
-                    if cmra_data is not None:
+                    if cmra_data is None:
+                        ids.append(Utils.code_to_symbol(stock_info.symbol))
+                        cmras.append(np.nan)
+                    else:
                         ids.append(cmra_data['code'])
                         cmras.append(cmra_data['cmra'])
             else:

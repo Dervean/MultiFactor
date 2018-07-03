@@ -49,7 +49,7 @@ class RSTR(Factor):
         df_secu_quote = Utils.get_secu_daily_mkt(code, end=calc_date, ndays=risk_ct.RSTR_CT.trailing_start+1, fq=True)
         if df_secu_quote is None:
             return None
-        if len(df_secu_quote) < risk_ct.RSTR_CT.half_life * 2:
+        if len(df_secu_quote) < risk_ct.RSTR_CT.half_life:
             return None
         df_secu_quote = df_secu_quote.head(len(df_secu_quote) - risk_ct.RSTR_CT.trailing_end)
         df_secu_quote.reset_index(drop=True, inplace=True)
@@ -88,8 +88,9 @@ class RSTR(Factor):
             rstr_data = cls._calc_factor_loading(code, calc_date)
         except Exception as e:
             print(e)
-        if rstr_data is not None:
-            q.put(rstr_data)
+        if rstr_data is None:
+            rstr_data = pd.Series([Utils.code_to_symbol(code), np.nan], index=['code', 'rstr'])
+        q.put(rstr_data)
 
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
@@ -125,7 +126,7 @@ class RSTR(Factor):
                 continue
             logging.info('[%s] Calc RSTR factor loading.' % Utils.datetimelike_to_str(calc_date))
             # 遍历个股, 计算个股的RSTR因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.RSTR_CT.half_life*3)).strftime('%Y%m%d')
+            s = (calc_date - datetime.timedelta(days=risk_ct.RSTR_CT.listed_days)).strftime('%Y%m%d')
             stock_basics = all_stock_basics[all_stock_basics.list_date < s]
             ids = []        # 个股代码list
             rstrs = []      # RSTR因子值list
@@ -137,7 +138,10 @@ class RSTR(Factor):
                 for _, stock_info in stock_basics.iterrows():
                     logging.info("[%s] Calc %s's RSTR factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     rstr_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
-                    if rstr_data is not None:
+                    if rstr_data is None:
+                        ids.append(Utils.code_to_symbol(stock_info.symbol))
+                        rstrs.append(np.nan)
+                    else:
                         ids.append(rstr_data['code'])
                         rstrs.append(rstr_data['rstr'])
             else:

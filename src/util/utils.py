@@ -1058,7 +1058,7 @@ class Utils(object):
                     df_data['cap'] = df_data['cap'] / df_data['cap'].sum()
                     if columns is None:
                         cols = [col for col in df_data.columns.tolist() if col not in [id, 'cap']]
-                    elif isinstance(columns, Iterable):
+                    elif isinstance(columns, Iterable) and not isinstance(columns, str):
                         cols = [col for col in df_data.columns.tolist() if (col in columns) & (col not in [id, 'cap'])]
                     else:
                         cols = [col for col in df_data.columns.tolist() if (col == columns) & (col not in [id, 'cap'])]
