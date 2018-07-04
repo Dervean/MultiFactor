@@ -346,12 +346,15 @@ def _get_prevN_years_finbasicdata(date, code, years):
         if not df_extract_mkt.empty:
             fq_factor = df_extract_mkt.iloc[-1]['factor']
             # 调整每股数据
-            fin_basic_data['BasicEPS'] *= fq_factor
-            fin_basic_data['UnitNetAsset'] *= fq_factor
-            fin_basic_data['UnitNetOperateCashFlow'] *= fq_factor
+            fin_basic_data['BasicEPS_adj'] = fin_basic_data['BasicEPS'] * fq_factor
+            fin_basic_data['UnitNetAsset_adj'] = fin_basic_data['UnitNetAsset'] * fq_factor
+            fin_basic_data['UnitNetOperateCashFlow_adj'] = fin_basic_data['UnitNetOperateCashFlow'] * fq_factor
             # 计算调整后的主营业务收入
             fin_basic_data['MainOperateRevenue_adj'] = fin_basic_data['MainOperateRevenue'] / fq_factor
         else:
+            fin_basic_data['BasicEPS_adj'] = fin_basic_data['BasicEPS']
+            fin_basic_data['UnitNetAsset_adj'] = fin_basic_data['UnitNetAsset']
+            fin_basic_data['UnitNetOperateCashFlow_adj'] = fin_basic_data['UnitNetOperateCashFlow']
             fin_basic_data['MainOperateRevenue_adj'] = fin_basic_data['MainOperateRevenue']
         prevN_years_finbasicdata.append(fin_basic_data)
     if is_ttm:
@@ -363,10 +366,11 @@ def _get_prevN_years_finbasicdata(date, code, years):
         if not df_extract_mkt.empty:
             fq_factor = df_extract_mkt.iloc[-1]['factor']
             # 调整每股数据
-            ttm_fin_basic_data['BasicEPS'] *= fq_factor
+            ttm_fin_basic_data['BasicEPS_adj'] = ttm_fin_basic_data['BasicEPS'] * fq_factor
             # 计算调整后的主营业务收入
             ttm_fin_basic_data['MainOperateRevenue_adj'] = ttm_fin_basic_data['MainOperateRevenue'] / fq_factor
         else:
+            ttm_fin_basic_data['BasicEPS_adj'] = ttm_fin_basic_data['BasicEPS']
             ttm_fin_basic_data['MainOperateRevenue_adj'] = ttm_fin_basic_data['MainOperateRevenue']
         prevN_years_finbasicdata.append(ttm_fin_basic_data)
     return prevN_years_finbasicdata
@@ -401,7 +405,7 @@ class EGRO(Factor):
         if prevN_years_finbasicdata is None:
             return None
         # 复权因子调整后的EPS对年度t进行线性回归(OLS), 计算斜率beta
-        arr_eps = np.asarray([fin_basicdata['BasicEPS'] for fin_basicdata in prevN_years_finbasicdata])
+        arr_eps = np.asarray([fin_basicdata['NetProfit'] for fin_basicdata in prevN_years_finbasicdata])
         if any(np.isnan(arr_eps)):
             return None
         arr_t = np.arange(1, years+1)
@@ -545,7 +549,7 @@ class SGRO(Factor):
         if prevN_years_finbasicdata is None:
             return None
         # 复权因子调整后的主营业务收入对年度t进行线性回归(OLS), 计算斜率beta
-        arr_revenue = np.asarray([fin_basicdata['MainOperateRevenue_adj'] for fin_basicdata in prevN_years_finbasicdata])
+        arr_revenue = np.asarray([fin_basicdata['MainOperateRevenue'] for fin_basicdata in prevN_years_finbasicdata])
         if any(np.isnan(arr_revenue)):
             return None
         arr_t = np.arange(1, years+1)
@@ -788,11 +792,11 @@ class Growth(Factor):
 
 if __name__ == '__main__':
     pass
-    # EGRLF.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
-    # EGRLF.calc_secu_factor_loading('000046', '2017-12-29')
+    EGRLF.calc_factor_loading(start_date='2009-12-31', end_date=None, month_end=False, save=True, multi_proc=True)
+    # EGRLF.calc_secu_factor_loading('000156', '2009-12-31')
     # EGRSF.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
     # EGRO.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
     # EGRO.calc_secu_factor_loading('SZ300591', '2017-12-29')
     # SGRO.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)
     # SGRO.calc_secu_factor_loading('300607', '2017-12-29')
-    Growth.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)
+    # Growth.calc_factor_loading(start_date='2009-12-31', end_date=None, month_end=False, save=True, multi_proc=False)

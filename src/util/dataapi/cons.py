@@ -10,7 +10,7 @@
 DATA_API='jaqs'
 
 # jaqs接口的数据源
-JAQS_DATA_SERVER='tcp://data.tushare.org:8910'
+JAQS_DATA_SERVER='tcp://data.quantos.org:8910'
 # jaqs接口登录用户名
 JAQS_LOGIN_USR='13811931480'
 # jaqs接口登录token

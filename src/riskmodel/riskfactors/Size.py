@@ -266,4 +266,4 @@ class Size(Factor):
 if __name__ == '__main__':
     # pass
     # LNCAP.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
-    Size.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
+    Size.calc_factor_loading(start_date='2009-12-31', end_date=None, month_end=False, save=True, multi_proc=True)

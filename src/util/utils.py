@@ -678,8 +678,10 @@ class Utils(object):
             growth_data['revenue'] = np.nan
         elif np.isnan(latest_ttm_data['MainOperateRevenue']):
             growth_data['revenue'] = np.nan
-        else:
+        elif prevN_ttm_data['MainOperateRevenue'] > ct.TINY_ABS_VALUE and latest_ttm_data['MainOperateRevenue'] > ct.TINY_ABS_VALUE:
             growth_data['revenue'] = pow(latest_ttm_data['MainOperateRevenue']/prevN_ttm_data['MainOperateRevenue'], 1/years) - 1
+        else:
+            growth_data['revenue'] = (latest_ttm_data['MainOperateRevenue'] - prevN_ttm_data['MainOperateRevenue']) / abs(prevN_ttm_data['MainOperateRevenue']) / years
 
         if np.isnan(prevN_ttm_data['NetProfit']):
             growth_data['netprofit'] = np.nan
@@ -687,8 +689,10 @@ class Utils(object):
             growth_data['netprofit'] = np.nan
         elif np.isnan(latest_ttm_data['NetProfit']):
             growth_data['netprofit'] = np.nan
-        else:
+        elif prevN_ttm_data['NetProfit'] > ct.TINY_ABS_VALUE and latest_ttm_data['NetProfit'] > ct.TINY_ABS_VALUE:
             growth_data['netprofit'] = pow(latest_ttm_data['NetProfit']/prevN_ttm_data['NetProfit'], 1/years) - 1
+        else:
+            growth_data['netprofit'] = (latest_ttm_data['NetProfit'] - prevN_ttm_data['NetProfit']) / abs(prevN_ttm_data['NetProfit']) / years
 
         return growth_data
 
