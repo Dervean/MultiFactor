@@ -108,7 +108,7 @@ class LNCAP(Factor):
             trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
-        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
+        # all_stock_basics = CDataHandler.DataApi.get_secu_basics()
         # 遍历交易日序列, 计算LNCAP因子载荷
         dict_lncap = None
         dict_liquidcap = None
@@ -117,8 +117,10 @@ class LNCAP(Factor):
                 continue
             logging.info('[%s] Calc LNCAP factor loading.' % Utils.datetimelike_to_str(calc_date))
             # 遍历个股, 计算个股的LNCAP因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.LNCAP_CT.listed_days)).strftime('%Y%m%d')
-            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            # s = (calc_date - datetime.timedelta(days=risk_ct.LNCAP_CT.listed_days)).strftime('%Y%m%d')
+            # stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            s = calc_date - datetime.timedelta(days=risk_ct.LNCAP_CT.listed_days)
+            stock_basics = Utils.get_stock_basics(s, False)
             ids = []    # 个股代码list
             lncaps = [] # LNCAP因子值list
             liquid_caps = []    # 流通市值因子list
@@ -266,4 +268,4 @@ class Size(Factor):
 if __name__ == '__main__':
     # pass
     # LNCAP.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
-    Size.calc_factor_loading(start_date='2009-12-31', end_date=None, month_end=False, save=True, multi_proc=True)
+    Size.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)

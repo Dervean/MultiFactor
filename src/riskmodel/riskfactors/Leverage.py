@@ -121,7 +121,7 @@ class MLEV(Factor):
             trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
-        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
+        # all_stock_basics = CDataHandler.DataApi.get_secu_basics()
         # 遍历交易日序列, 计算MLEV因子载荷
         dict_mlev = None
         for calc_date in trading_days_series:
@@ -129,8 +129,10 @@ class MLEV(Factor):
                 continue
             logging.info('[%s] Calc MLEV factor loading.' % Utils.datetimelike_to_str(calc_date))
             # 遍历个股, 计算个股的MLEV因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.MLEV_CT.listed_days)).strftime('%Y%m%d')
-            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            # s = (calc_date - datetime.timedelta(days=risk_ct.MLEV_CT.listed_days)).strftime('%Y%m%d')
+            # stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            s = calc_date - datetime.timedelta(days=risk_ct.MLEV_CT.listed_days)
+            stock_basics = Utils.get_stock_basics(s, False)
             ids = []    # 个股代码list
             mlevs = []  # MLEV因子值list
 
@@ -260,7 +262,7 @@ class DTOA(Factor):
             trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
-        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
+        # all_stock_basics = CDataHandler.DataApi.get_secu_basics()
         # 遍历交易日序列, 计算DTOA因子载荷
         dict_dtoa = None
         for calc_date in trading_days_series:
@@ -268,8 +270,10 @@ class DTOA(Factor):
                 continue
             logging.info('[%s] Calc DTOA factor loading.' % Utils.datetimelike_to_str(calc_date))
             # 遍历个股, 计算个股的DTOA因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.DTOA_CT.listed_days)).strftime('%Y%m%d')
-            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            # s = (calc_date - datetime.timedelta(days=risk_ct.DTOA_CT.listed_days)).strftime('%Y%m%d')
+            # stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            s = calc_date - datetime.timedelta(days=risk_ct.DTOA_CT.listed_days)
+            stock_basics = Utils.get_stock_basics(s, False)
             ids = []    # 个股代码list
             dtoas = []  # DTOA因子值list
 
@@ -401,7 +405,7 @@ class BLEV(Factor):
             trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
-        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
+        # all_stock_basics = CDataHandler.DataApi.get_secu_basics()
         # 遍历交易日序列, 计算BLEV因子载荷
         dict_blev = None
         for calc_date in trading_days_series:
@@ -409,8 +413,10 @@ class BLEV(Factor):
                 continue
             logging.info('[%s] Calc BLEV factor loading.' % Utils.datetimelike_to_str(calc_date))
             # 遍历个股, 计算个股的BLEV因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.BLEV_CT.listed_days)).strftime('%Y%m%d')
-            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            # s = (calc_date - datetime.timedelta(days=risk_ct.BLEV_CT.listed_days)).strftime('%Y%m%d')
+            # stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            s = calc_date - datetime.timedelta(days=risk_ct.BLEV_CT.listed_days)
+            stock_basics = Utils.get_stock_basics(s, False)
             ids = []    # 个股代码list
             blevs = []  # BLEV因子值list
 
@@ -535,4 +541,5 @@ if __name__ == '__main__':
     # MLEV.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
     # DTOA.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
     # BLEV.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
+    # BLEV.calc_secu_factor_loading('600088', '2017-12-29')
     Leverage.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)

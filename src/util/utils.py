@@ -43,6 +43,58 @@ class Utils(object):
     _DataCache = Cache(500)    # 数据缓存
 
     @classmethod
+    def get_stock_basics(cls, date=None, remove_st=False):
+        """
+        读取上市交易个股列表信息
+        Parameters:
+        --------
+        :param date: datetime-like or str
+            交易日期, 格式: YYYY-MM-DD or YYYYMMDD
+            默认为None, 读取最新的上市交易个股信息列表
+        :param remove_st: bool
+            是否剔除st个股, 默认为False, 即不剔除
+        :return: pd.DataFrame
+        --------
+            0. symbol: 个股代码
+            1. name: 个股简称
+            2. listed_date: 上市日期
+        """
+        if date is None:
+            date = datetime.date.today()
+        date = cls.datetimelike_to_str(date, dash=False)
+
+        df_stock_basics = pd.read_csv(os.path.join(ct.DB_PATH, ct.BASIC_INFO_PATH, 'stock_basics.csv'), dtype={'listed_date': str})
+        df_stock_basics = df_stock_basics[df_stock_basics['listed_date'] <= date]
+        if remove_st:
+            st_stocks = cls.get_st_stocks(date)
+            df_stock_basics = df_stock_basics[~df_stock_basics['symbol'].isin(st_stocks)]
+        df_stock_basics.reset_index(drop=True, inplace=True)
+        return df_stock_basics
+
+    @classmethod
+    def get_st_stocks(cls, date=None):
+        """
+        读取st个股元组
+        Parameters:
+        --------
+        :param date: datetime-like or str
+            交易日期, e.g. YYYY-MM-DD or YYYYMMDD
+            默认为None, 读取最新的st个股列表
+        :return: set
+        --------
+            st个股代码set
+        """
+        if date is None:
+            date = datetime.date.today()
+        date = int(cls.datetimelike_to_str(date, dash=False))
+        df_st_info = pd.read_csv(os.path.join(ct.DB_PATH, ct.BASIC_INFO_PATH, 'st_info.csv'))
+        df_st_info = df_st_info[(df_st_info['st_start'] <= date) & (df_st_info['st_end'] > date)]
+        if df_st_info.empty:
+            return set()
+        else:
+            return set(df_st_info['code'])
+
+    @classmethod
     def calc_interval_ret(cls, secu_code, start=None, end=None, ndays=None):
         """
         计算证券区间收益率
@@ -147,10 +199,14 @@ class Utils(object):
             Series of pandas.Timestamp，交易日列表，默认按交易日升序排列
         """
         if len(Utils.utils_trading_days) == 0:
-            ts_conn = ts.get_apis()
-            df_SZZS = ts.bar(code='000001', conn=ts_conn, asset='INDEX')
-            ts.close_apis(ts_conn)
-            Utils.utils_trading_days = Series(df_SZZS.index).sort_values()
+            # ts_conn = ts.get_apis()
+            # df_SZZS = ts.bar(code='000001', conn=ts_conn, asset='INDEX')
+            # ts.close_apis(ts_conn)
+            # Utils.utils_trading_days = Series(df_SZZS.index).sort_values()
+
+            calendar_path = os.path.join(ct.DB_PATH, ct.BASIC_INFO_PATH, 'trading_days.csv')
+            df_trading_days = pd.read_csv(calendar_path, parse_dates=[0])
+            Utils.utils_trading_days = df_trading_days['trading_day']
         if start is not None:
             start = cls.to_date(start)
         if end is not None:
@@ -1190,9 +1246,21 @@ class Utils(object):
 def _code_to_symbol(code):
     """
     生成本系统的证券代码symbol
-    :param code:原始代码，如600000
-    :return:
+    :param code:原始代码，如600000, 600000,SH, 600000SH
+    :return: 本系统证券代码, 如SH600000
     """
+    if '.' in code:
+        codes = code.split('.')
+        if codes[0].upper() in ['SH', 'SZ']:
+            code = codes[1]
+        else:
+            code = codes[0]
+    else:
+        if code[:2].upper() in ['SH', 'SZ']:
+            code = code[2:]
+        if code[-2:].upper() in ['SH', 'SZ']:
+            code = code[:-2]
+
     if len(code) != 6:
         return code
     else:
@@ -1282,5 +1350,10 @@ if __name__ == '__main__':
     # print(df.head())
     # secu_ind_dist = Utils.get_ind_dist('600000')
     # print(secu_ind_dist)
-    ipo_info = Utils.get_ipo_info('600000')
-    print(ipo_info)
+    # ipo_info = Utils.get_ipo_info('600000')
+    # print(ipo_info)
+    # st_stocks = Utils.get_st_stocks()
+    # print(st_stocks)
+    stock_basics = Utils.get_stock_basics(date='2018-01-01', remove_st=True)
+    print(stock_basics.head(100))
+

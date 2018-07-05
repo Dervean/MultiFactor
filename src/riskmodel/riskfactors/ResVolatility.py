@@ -117,7 +117,7 @@ class DASTD(Factor):
             trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
-        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
+        # all_stock_basics = CDataHandler.DataApi.get_secu_basics()
         # 遍历交易日序列, 计算DASTD因子载荷
         dict_dastd = None
         for calc_date in trading_days_series:
@@ -125,8 +125,10 @@ class DASTD(Factor):
                 continue
             logging.info('[%s] Calc DASTD factor loading.' % Utils.datetimelike_to_str(calc_date))
             # 遍历个股, 计算个股的DASTD因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.DASTD_CT.listed_days)).strftime('%Y%m%d')
-            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            # s = (calc_date - datetime.timedelta(days=risk_ct.DASTD_CT.listed_days)).strftime('%Y%m%d')
+            # stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            s = calc_date - datetime.timedelta(days=risk_ct.DASTD_CT.listed_days)
+            stock_basics = Utils.get_stock_basics(s, False)
             ids = []        # 个股代码list
             dastds = []     # DASTD因子值list
 
@@ -227,6 +229,8 @@ class CMRA(Factor):
         trading_days = [day.strftime('%Y-%m-%d') for day in trading_days]
         # 取得个股复权行情数据
         df_secu_quote = Utils.get_secu_daily_mkt(code, end=calc_date, fq=True)
+        if df_secu_quote is None:
+            return None
         # 提取相应交易日的个股复权行情数据
         df_secu_quote = df_secu_quote[df_secu_quote['date'].isin(trading_days)]
         df_secu_quote.reset_index(drop=True, inplace=True)
@@ -304,7 +308,7 @@ class CMRA(Factor):
             trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
-        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
+        # all_stock_basics = CDataHandler.DataApi.get_secu_basics()
         # 遍历交易日序列, 计算CMRA因子载荷
         dict_cmra = None
         for calc_date in trading_days_series:
@@ -312,8 +316,10 @@ class CMRA(Factor):
                 continue
             logging.info('[%s] Calc CMRA factor loading.' % Utils.datetimelike_to_str(calc_date))
             # 遍历个股, 计算个股的CMRA因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.CMRA_CT.listed_days)).strftime('%Y%m%d')
-            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            # s = (calc_date - datetime.timedelta(days=risk_ct.CMRA_CT.listed_days)).strftime('%Y%m%d')
+            # stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            s = calc_date - datetime.timedelta(days=risk_ct.CMRA_CT.listed_days)
+            stock_basics = Utils.get_stock_basics(s, False)
             ids = []        # 个股代码list
             cmras = []      # CMRA因子值list
 
@@ -453,5 +459,5 @@ if __name__ == '__main__':
     pass
     # DASTD.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
     # CMRA.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
-    # CMRA.calc_secu_factor_loading(code='000750', calc_date='2017-12-29')
+    # CMRA.calc_secu_factor_loading(code='601360', calc_date='2017-12-29')
     ResVolatility.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)

@@ -8,6 +8,8 @@
 # 因子数据库根目录
 # DB_PATH = '/Users/davidyujun/Dropbox/FactorDB'
 DB_PATH = '/Volumes/DB/FactorDB'
+# 个股基本信息数据相对目录
+BASIC_INFO_PATH = 'ElementaryFactor/basic_info'
 # 日行情复权数据相对目录
 MKT_DAILY_FQ = 'ElementaryFactor/mkt_daily_FQ'
 # 日行情非复权数据相对目录
@@ -56,7 +58,8 @@ FIN_SUMMARY_DATA_HEADER = ['ReportDate', 'OperatingIncome', 'OperatingCost', 'Op
 SW_INDUSTRY_CLASSIFY_HEADER = ['ind_code', 'ind_name']
 
 # 因子载荷文件持久化形式
-FACTOR_LOADING_PERSISTENCE_TYPE='shelve,csv'
+# FACTOR_LOADING_PERSISTENCE_TYPE='shelve,csv'
+FACTOR_LOADING_PERSISTENCE_TYPE='csv'
 # 读取因子载荷采用的持久化形式，csv或shelve
 USING_PERSISTENCE_TYPE='csv'
 

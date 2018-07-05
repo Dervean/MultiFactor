@@ -116,7 +116,7 @@ class BTOP(Factor):
             trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
-        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
+        # all_stock_basics = CDataHandler.DataApi.get_secu_basics()
         # 遍历交易日序列, 计算BTOP因子载荷
         dict_btop = None
         for calc_date in trading_days_series:
@@ -124,8 +124,10 @@ class BTOP(Factor):
                 continue
             logging.info('[%s] Calc BTOP factor loading.' % Utils.datetimelike_to_str(calc_date))
             # 遍历个股, 计算个股的BTOP因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.BTOP_CT.listed_days)).strftime('%Y%m%d')
-            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            # s = (calc_date - datetime.timedelta(days=risk_ct.BTOP_CT.listed_days)).strftime('%Y%m%d')
+            # stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            s = calc_date - datetime.timedelta(days=risk_ct.BTOP_CT.listed_days)
+            stock_basics = Utils.get_stock_basics(s, False)
             ids = []    # 个股代码list
             btops = []  # BTOP因子值list
 

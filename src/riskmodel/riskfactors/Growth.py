@@ -113,7 +113,7 @@ class EGRLF(Factor):
             trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
-        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
+        # all_stock_basics = CDataHandler.DataApi.get_secu_basics()
         # 遍历交易日序列, 计算egrlf因子载荷
         dict_egrlf = None
         for calc_date in trading_days_series:
@@ -121,8 +121,10 @@ class EGRLF(Factor):
                 continue
             logging.info('[%s] Calc EGRLF factor loading.' % Utils.datetimelike_to_str(calc_date))
             # 遍历个股, 计算个股的EGRLF因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.EGRLF_CT.listed_days)).strftime('%Y%m%d')
-            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            # s = (calc_date - datetime.timedelta(days=risk_ct.EGRLF_CT.listed_days)).strftime('%Y%m%d')
+            # stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            s = calc_date - datetime.timedelta(days=risk_ct.EGRLF_CT.listed_days)
+            stock_basics = Utils.get_stock_basics(s, False)
             ids = []        # 个股代码list
             egrlfs = []     # EGRLF因子值list
 
@@ -249,7 +251,7 @@ class EGRSF(Factor):
             trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
-        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
+        # all_stock_basics = CDataHandler.DataApi.get_secu_basics()
         # 遍历交易日序列, 计算egrsf因子载荷
         dict_egrsf = None
         for calc_date in trading_days_series:
@@ -257,8 +259,10 @@ class EGRSF(Factor):
                 continue
             logging.info('[%s] Calc EGRSF factor loading.' % Utils.datetimelike_to_str(calc_date))
             # 遍历个股, 计算个股的EGRSF因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.EGRSF_CT.listed_days)).strftime('%Y%m%d')
-            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            # s = (calc_date - datetime.timedelta(days=risk_ct.EGRSF_CT.listed_days)).strftime('%Y%m%d')
+            # stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            s = calc_date - datetime.timedelta(days=risk_ct.EGRSF_CT.listed_days)
+            stock_basics = Utils.get_stock_basics(s, False)
             ids = []        # 个股代码list
             egrsfs = []     # EGRSF因子值list
 
@@ -471,7 +475,7 @@ class EGRO(Factor):
             trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
-        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
+        # all_stock_basics = CDataHandler.DataApi.get_secu_basics()
         # 遍历交易日序列, 计算egro因子载荷
         dict_egro = None
         for calc_date in trading_days_series:
@@ -479,8 +483,10 @@ class EGRO(Factor):
                 continue
             logging.info('[%s] Calc EGRO factor loading.' % Utils.datetimelike_to_str(calc_date))
             # 遍历个股, 计算个股egro因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.EGRO_CT.listed_days)).strftime('%Y%m%d')
-            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            # s = (calc_date - datetime.timedelta(days=risk_ct.EGRO_CT.listed_days)).strftime('%Y%m%d')
+            # stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            s = calc_date - datetime.timedelta(days=risk_ct.EGRO_CT.listed_days)
+            stock_basics = Utils.get_stock_basics(s, False)
             ids = []        # 个股代码list
             egros = []      # EGRO因子值list
 
@@ -615,7 +621,7 @@ class SGRO(Factor):
             trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
-        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
+        # all_stock_basics = CDataHandler.DataApi.get_secu_basics()
         # 遍历交易日序列, 计算sgro因子载荷
         dict_sgro = None
         for calc_date in trading_days_series:
@@ -623,8 +629,10 @@ class SGRO(Factor):
                 continue
             logging.info('[%s] Calc SGRO factor loading.' % Utils.datetimelike_to_str(calc_date))
             # 遍历个股, 计算个股sgro因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.SGRO_CT.listed_days)).strftime('%Y%m%d')
-            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            # s = (calc_date - datetime.timedelta(days=risk_ct.SGRO_CT.listed_days)).strftime('%Y%m%d')
+            # stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            s = calc_date - datetime.timedelta(days=risk_ct.SGRO_CT.listed_days)
+            stock_basics = Utils.get_stock_basics(s, False)
             ids = []        # 个股代码list
             sgros = []      # SGRO因子值list
 
@@ -791,12 +799,12 @@ class Growth(Factor):
 
 
 if __name__ == '__main__':
-    pass
-    EGRLF.calc_factor_loading(start_date='2009-12-31', end_date=None, month_end=False, save=True, multi_proc=True)
+    # pass
+    # EGRLF.calc_factor_loading(start_date='2009-12-31', end_date=None, month_end=False, save=True, multi_proc=True)
     # EGRLF.calc_secu_factor_loading('000156', '2009-12-31')
     # EGRSF.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
     # EGRO.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
     # EGRO.calc_secu_factor_loading('SZ300591', '2017-12-29')
     # SGRO.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)
     # SGRO.calc_secu_factor_loading('300607', '2017-12-29')
-    # Growth.calc_factor_loading(start_date='2009-12-31', end_date=None, month_end=False, save=True, multi_proc=False)
+    Growth.calc_factor_loading(start_date='2009-12-31', end_date=None, month_end=False, save=True, multi_proc=False)

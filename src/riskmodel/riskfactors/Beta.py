@@ -53,6 +53,8 @@ class DBETA(Factor):
         df_secu_quote = Utils.get_secu_daily_mkt(code, end=calc_date, ndays=risk_ct.DBETA_CT.trailing+1, fq=True)
         if df_secu_quote is None:
             return None
+        if len(df_secu_quote) < 126:
+            return None
         df_secu_quote.reset_index(drop=True, inplace=True)
         # 取得基准复权行情数据
         benchmark_code = risk_ct.DBETA_CT.benchmark
@@ -132,7 +134,7 @@ class DBETA(Factor):
             trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
-        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
+        # all_stock_basics = CDataHandler.DataApi.get_secu_basics()
         # 遍历交易日序列, 计算筹码分布因子载荷
         dict_beta = {}
         dict_hsigma = {}
@@ -141,8 +143,10 @@ class DBETA(Factor):
                 continue
             logging.info('[%s] Calc BETA factor loading.' % Utils.datetimelike_to_str(calc_date))
             # 遍历个股, 计算个股BETA因子值
-            s = (calc_date - datetime.timedelta(days=risk_ct.DBETA_CT.listed_days)).strftime('%Y%m%d')
-            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            # s = (calc_date - datetime.timedelta(days=risk_ct.DBETA_CT.listed_days)).strftime('%Y%m%d')
+            # stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            s = calc_date - datetime.timedelta(days=risk_ct.DBETA_CT.listed_days)
+            stock_basics = Utils.get_stock_basics(s, False)
             ids = []        # 个股代码list
             betas = []      # BETA因子值
             hsigmas = []    # HSIGMA因子值
@@ -271,5 +275,6 @@ class Beta(Factor):
 
 if __name__ == '__main__':
     # pass
-    # BETA.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)
+    # DBETA.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)
+    # DBETA.calc_secu_factor_loading('603329', '2017-12-29')
     Beta.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)
