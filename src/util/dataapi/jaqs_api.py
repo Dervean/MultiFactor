@@ -35,7 +35,7 @@ class JaqsApi(CDataApi):
         """
         df_basics, msg = cls._api.query(
                                         view='jz.instrumentInfo',
-                                        fields='status,list_date,delist_date,name,market',
+                                        fields='status,list_date,name,market',
                                         filter='inst_type=%d&status=1&market=SH,SZ&symbol=' % inst_type,
                                         data_format='pandas')
         if msg != '0,':

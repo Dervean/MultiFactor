@@ -21,4 +21,5 @@ class CDataHandler(object):
 
 
 if __name__ == '__main__':
-    pass
+    stocks = CDataHandler.DataApi.get_secu_basics()
+    print(stocks[stocks['symbol']=='000333'])

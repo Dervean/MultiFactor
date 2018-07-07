@@ -345,7 +345,12 @@ class Utils(object):
             mkt_data = df_mkt[df_mkt.date <= end].tail(ndays)
         elif start is not None:
             if range_lookup:
-                mkt_data = df_mkt[df_mkt.date <= start].iloc[-1]
+                # mkt_data = df_mkt[df_mkt.date <= start].iloc[-1]
+                mkt_data = df_mkt[df_mkt.date <= start]
+                if mkt_data.empty:
+                    mkt_data = pd.Series()
+                else:
+                    mkt_data = mkt_data.iloc[-1]
             else:
                 mkt_data = df_mkt[df_mkt.date == start]
                 if mkt_data.shape[0] == 0:
@@ -363,6 +368,8 @@ class Utils(object):
             #         mkt_data = mkt_data.iloc[0]
             mkt_data = df_mkt[df_mkt.date <= end]
         else:
+            mkt_data = None
+        if (isinstance(mkt_data, pd.DataFrame) or isinstance(mkt_data, pd.Series)) and mkt_data.empty:
             mkt_data = None
         return mkt_data
 
@@ -1253,13 +1260,23 @@ def _code_to_symbol(code):
         codes = code.split('.')
         if codes[0].upper() in ['SH', 'SZ']:
             code = codes[1]
-        else:
+            mkt_code = codes[0].upper()
+        elif codes[1].upper() in ['SH', 'SZ']:
             code = codes[0]
+            mkt_code = codes[1].upper()
+        else:
+            mkt_code = ''
+        code = mkt_code + code
     else:
         if code[:2].upper() in ['SH', 'SZ']:
+            mkt_code = code[:2].upper()
             code = code[2:]
-        if code[-2:].upper() in ['SH', 'SZ']:
+        elif code[-2:].upper() in ['SH', 'SZ']:
+            mkt_code = code[-2:].upper()
             code = code[:-2]
+        else:
+            mkt_code = ''
+        code = mkt_code + code
 
     if len(code) != 6:
         return code
@@ -1354,6 +1371,7 @@ if __name__ == '__main__':
     # print(ipo_info)
     # st_stocks = Utils.get_st_stocks()
     # print(st_stocks)
-    stock_basics = Utils.get_stock_basics(date='2018-01-01', remove_st=True)
-    print(stock_basics.head(100))
+    # stock_basics = Utils.get_stock_basics(date='2018-01-01', remove_st=True)
+    # print(stock_basics.head(100))
+    print(_code_to_symbol('000300.sH'))
 

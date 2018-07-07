@@ -23,7 +23,7 @@ from src.riskmodel.riskfactors.Leverage import Leverage
 class Barra(object):
     """Barra风险模型基类"""
 
-    def calc_factorloading(self, start_date, end_date=None):
+    def calc_factorloading(self, start_date, end_date=None, multi_prc=False):
         """
         计算风险因子的因子载荷
         Parameters:
@@ -32,6 +32,8 @@ class Barra(object):
             计算开始日期, 格式: YYYY-MM-DD
         :param end_date: datetime-like, str
             计算结束日期, 格式: YYYY-MM-DD
+        :param multi_prc: bool
+            是否并行计算, 默认为False
         :return: None
         """
         # 读取交易日序列
@@ -43,16 +45,16 @@ class Barra(object):
             trading_days_series = Utils.get_trading_days(start=start_date, ndays=1)
         # 遍历交易日序列, 计算风险因子的因子载荷
         for calc_date in trading_days_series:
-            Size.calc_factor_loading(start_date=start_date, end_date=None, month_end=False, save=True, multi_proc=True)
-            Beta.calc_factor_loading(start_date=start_date, end_date=None, month_end=False, save=True, multi_proc=True)
-            Momentum.calc_factor_loading(start_date=start_date, end_date=None, month_end=False, save=True, multi_proc=True)
-            ResVolatility.calc_factor_loading(start_date=start_date, end_date=None, month_end=False, save=True, multi_proc=True)
-            NonlinearSize.calc_factor_loading(start_date=start_date, end_date=None, month_end=False, save=True, multi_proc=True)
-            Value.calc_factor_loading(start_date=start_date, end_date=None, month_end=False, save=True, multi_proc=True)
-            Liquidity.calc_factor_loading(start_date=start_date, end_date=None, month_end=False, save=True, multi_proc=True)
-            EarningsYield.calc_factor_loading(start_date=start_date, end_date=None, month_end=False, save=True, multi_proc=True)
-            Growth.calc_factor_loading(start_date=start_date, end_date=None, month_end=False, save=True, multi_proc=True)
-            Leverage.calc_factor_loading(start_date=start_date, end_date=None, month_end=False, save=True, multi_proc=True)
+            Size.calc_factor_loading(start_date=calc_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
+            Beta.calc_factor_loading(start_date=calc_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
+            Momentum.calc_factor_loading(start_date=calc_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
+            ResVolatility.calc_factor_loading(start_date=calc_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
+            NonlinearSize.calc_factor_loading(start_date=calc_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
+            Value.calc_factor_loading(start_date=calc_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
+            Liquidity.calc_factor_loading(start_date=calc_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
+            EarningsYield.calc_factor_loading(start_date=starcalc_datet_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
+            Growth.calc_factor_loading(start_date=calc_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
+            Leverage.calc_factor_loading(start_date=calc_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
 
     def _get_factorloading_matrix(self, date):
         """

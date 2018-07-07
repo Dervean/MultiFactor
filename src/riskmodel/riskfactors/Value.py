@@ -80,7 +80,7 @@ class BTOP(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc BTOP factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[{}] Calc BTOP factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
         btop_data = None
         try:
             btop_data = cls._calc_factor_loading(code, calc_date)
@@ -136,7 +136,7 @@ class BTOP(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算BTOP因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's BTOP factor loading." % (Utils.datetimelike_to_str(calc_date, dash=True), stock_info.symbol))
+                    logging.debug("[%s] Calc %s's BTOP factor loading." % (Utils.datetimelike_to_str(calc_date, dash=True), stock_info.symbol))
                     btop_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if btop_data is None:
                         ids.append(Utils.code_to_symbol(stock_info.symbol))
@@ -162,7 +162,7 @@ class BTOP(Factor):
             if save:
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_btop, ['date', 'id', 'factorvalue'])
             # 暂停180秒
-            logging.info('Suspending for 180s.')
+            # logging.info('Suspending for 180s.')
             # time.sleep(180)
         return dict_btop
 

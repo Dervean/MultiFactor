@@ -79,7 +79,7 @@ class EPFWD(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc EPFWD factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[{}] Calc EPFWD factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
         epfwd_data = None
         try:
             epfwd_data = cls._calc_factor_loading(code, calc_date)
@@ -135,7 +135,7 @@ class EPFWD(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算EPFWD因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's EPFWD factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    logging.debug("[%s] Calc %s's EPFWD factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     epfwd_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if epfwd_data is None:
                         ids.append(Utils.code_to_symbol(stock_info.symbol))
@@ -161,7 +161,7 @@ class EPFWD(Factor):
             if save:
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_epfwd, ['date', 'id', 'factorvalue'])
             # 暂停180秒
-            logging.info('Suspending for 180s.')
+            # logging.info('Suspending for 180s.')
             # time.sleep(180)
         return dict_epfwd
 
@@ -219,7 +219,7 @@ class CETOP(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc CETOP factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[{}] Calc CETOP factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
         cetop_data = None
         try:
             cetop_data = cls._calc_factor_loading(code, calc_date)
@@ -275,7 +275,7 @@ class CETOP(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算CETOP因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's CETOP factor loading." % (Utils.datetimelike_to_str(calc_date), stock_info.symbol))
+                    logging.debug("[%s] Calc %s's CETOP factor loading." % (Utils.datetimelike_to_str(calc_date), stock_info.symbol))
                     cetop_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if cetop_data is None:
                         ids.append(Utils.code_to_symbol(stock_info.symbol))
@@ -301,7 +301,7 @@ class CETOP(Factor):
             if save:
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_cetop, ['date', 'id', 'factorvalue'])
             # 暂停180秒
-            logging.info('Suspending for 180s.')
+            # logging.info('Suspending for 180s.')
             # time.sleep(180)
         return dict_cetop
 
@@ -359,7 +359,7 @@ class ETOP(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc ETOP factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[{}] Calc ETOP factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
         etop_data = None
         try:
             etop_data = cls._calc_factor_loading(code, calc_date)
@@ -415,7 +415,7 @@ class ETOP(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算ETOP因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's ETOP factor loading." % (Utils.datetimelike_to_str(calc_date), stock_info.symbol))
+                    logging.debug("[%s] Calc %s's ETOP factor loading." % (Utils.datetimelike_to_str(calc_date), stock_info.symbol))
                     etop_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if etop_data is None:
                         ids.append(Utils.code_to_symbol(stock_info.symbol))
@@ -441,7 +441,7 @@ class ETOP(Factor):
             if save:
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_etop, ['date', 'id', 'factorvalue'])
             # 暂停180秒
-            logging.info('Suspending for 180s.')
+            # logging.info('Suspending for 180s.')
             # time.sleep(180)
         return dict_etop
 

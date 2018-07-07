@@ -53,7 +53,12 @@ class DBETA(Factor):
         df_secu_quote = Utils.get_secu_daily_mkt(code, end=calc_date, ndays=risk_ct.DBETA_CT.trailing+1, fq=True)
         if df_secu_quote is None:
             return None
+        # 如果行情数据长度小于半年(126个交易日), 那么返回None
         if len(df_secu_quote) < 126:
+            return None
+        # 如果读取的行情数据起始日距离计算日期大于trailing的3倍, 返回None
+        s = Utils.to_date(calc_date) - datetime.timedelta(days=risk_ct.DBETA_CT.trailing*3)
+        if Utils.to_date(df_secu_quote.iloc[0]['date']) < s:
             return None
         df_secu_quote.reset_index(drop=True, inplace=True)
         # 取得基准复权行情数据
@@ -99,7 +104,7 @@ class DBETA(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列中
         """
-        logging.info('[%s] Calc BETA factor of %s.' % (Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[%s] Calc BETA factor of %s.' % (Utils.datetimelike_to_str(calc_date), code))
         beta_data = None
         try:
             beta_data = cls._calc_factor_loading(code, calc_date)
@@ -156,7 +161,7 @@ class DBETA(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算BETA因子和HSIGMA因子值,
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's BETA and HSIGMA factor data." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    logging.debug("[%s] Calc %s's BETA and HSIGMA factor data." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     beta_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if beta_data is None:
                         ids.append(Utils.code_to_symbol(stock_info.symbol))
@@ -188,7 +193,7 @@ class DBETA(Factor):
                 hsigma_path = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.HSIGMA_CT.db_file)
                 Utils.factor_loading_persistent(hsigma_path, Utils.datetimelike_to_str(calc_date, dash=False), dict_hsigma, ['date', 'id', 'factorvalue'])
             # 休息180秒
-            logging.info('Suspending for 180s.')
+            # logging.info('Suspending for 180s.')
             # time.sleep(180)
         return dict_beta
 

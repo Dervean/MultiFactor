@@ -85,7 +85,7 @@ class MLEV(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc MLEV factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[{}] Calc MLEV factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
         mlev_data = None
         try:
             mlev_data = cls._calc_factor_loading(code, calc_date)
@@ -141,7 +141,7 @@ class MLEV(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算MLEV因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's MLEV factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    logging.debug("[%s] Calc %s's MLEV factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     mlev_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if mlev_data is None:
                         ids.append(Utils.code_to_symbol(stock_info.symbol))
@@ -167,7 +167,7 @@ class MLEV(Factor):
             if save:
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_mlev, ['date', 'id', 'factorvalue'])
             # 暂停180秒
-            logging.info('Suspending for 180s.')
+            # logging.info('Suspending for 180s.')
             # time.sleep(180)
         return dict_mlev
 
@@ -226,7 +226,7 @@ class DTOA(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc DTOA factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[{}] Calc DTOA factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
         dtoa_data = None
         try:
             dtoa_data = cls._calc_factor_loading(code, calc_date)
@@ -282,7 +282,7 @@ class DTOA(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算DTOA因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Cacl %s's DTOA factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    logging.debug("[%s] Cacl %s's DTOA factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     dtoa_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if dtoa_data is None:
                         ids.append(Utils.code_to_symbol(stock_info.symbol))
@@ -308,7 +308,7 @@ class DTOA(Factor):
             if save:
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_dtoa, ['date', 'id', 'factorvalue'])
             # 暂停180秒
-            logging.info('Suspending for 180s.')
+            # logging.info('Suspending for 180s.')
             # time.sleep(180)
         return dict_dtoa
 
@@ -369,7 +369,7 @@ class BLEV(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc BLEV factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[{}] Calc BLEV factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
         blev_data = None
         try:
             blev_data = cls._calc_factor_loading(code, calc_date)
@@ -425,7 +425,7 @@ class BLEV(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算BLEV因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's BLEV factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    logging.debug("[%s] Calc %s's BLEV factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     blev_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if blev_data is None:
                         ids.append(Utils.code_to_symbol(stock_info.symbol))
@@ -451,7 +451,7 @@ class BLEV(Factor):
             if save:
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_blev, ['date', 'id', 'factorvalue'])
             # 暂停180秒
-            logging.info('Suspending for 180s.')
+            # logging.info('Suspending for 180s.')
             # time.sleep(180)
         return dict_blev
 

@@ -73,7 +73,7 @@ class STOM(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc STOM factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[{}] Calc STOM factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
         stom_data = None
         try:
             stom_data = cls._calc_factor_loading(code, calc_date)
@@ -129,7 +129,7 @@ class STOM(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算STOM因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's STOM factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    logging.debug("[%s] Calc %s's STOM factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     stom_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if stom_data is None:
                         ids.append(Utils.code_to_symbol(stock_info.symbol))
@@ -203,7 +203,7 @@ class STOQ(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc STOQ factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[{}] Calc STOQ factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
         stoq_data = None
         try:
             stoq_data = cls._calc_factor_loading(code, calc_date)
@@ -259,7 +259,7 @@ class STOQ(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算STOQ因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's STOQ factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    logging.debug("[%s] Calc %s's STOQ factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     stoq_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if stoq_data is None:
                         ids.append(Utils.code_to_symbol(stock_info.symbol))
@@ -333,7 +333,7 @@ class STOA(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc STOA factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[{}] Calc STOA factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
         stoa_data = None
         try:
             stoa_data = cls._calc_factor_loading(code, calc_date)
@@ -389,7 +389,7 @@ class STOA(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算STOA因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's STOA factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    logging.debug("[%s] Calc %s's STOA factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     stoa_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if stoa_data is None:
                         ids.append(Utils.code_to_symbol(stock_info.symbol))
@@ -501,7 +501,7 @@ class Liquidity_(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc Liquidity factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[{}] Calc Liquidity factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
         liquidity_data = None
         try:
             liquidity_data = cls._calc_factor_loading(code, calc_date)
@@ -561,7 +561,7 @@ class Liquidity_(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算LIQUIDITY因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's LIQUIDITY factor loading." % (Utils.datetimelike_to_str(calc_date, dash=True), stock_info.symbol))
+                    logging.debug("[%s] Calc %s's LIQUIDITY factor loading." % (Utils.datetimelike_to_str(calc_date, dash=True), stock_info.symbol))
                     liquidity_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if liquidity_data is not None:
                         ids.append(liquidity_data['code'])
@@ -616,7 +616,7 @@ class Liquidity_(Factor):
                 Utils.factor_loading_persistent(cls._db_file, str_date, df_liquidity.to_dict('list'), factor_header)
 
             # 暂停180秒
-            logging.info('Suspending for 180s.')
+            # logging.info('Suspending for 180s.')
             # time.sleep(180)
         return dict_raw_liquidity
 

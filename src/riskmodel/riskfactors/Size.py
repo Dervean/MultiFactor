@@ -73,14 +73,15 @@ class LNCAP(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc LNCAP factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[{}] Calc LNCAP factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
         lncap_data = None
         try:
             lncap_data = cls._calc_factor_loading(code, calc_date)
         except Exception as e:
             print(e)
-        if lncap_data is not None:
-            q.put(lncap_data)
+        if lncap_data is None:
+            lncap_data = pd.Series([Utils.code_to_symbol(code), np.nan, np.nan], index=['code', 'lncap', 'liquid_cap'])
+        q.put(lncap_data)
 
     @classmethod
     def calc_factor_loading(cls, start_date, end_date=None, month_end=True, save=False, **kwargs):
@@ -130,9 +131,13 @@ class LNCAP(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算LNCAP因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's LNCAP factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    logging.debug("[%s] Calc %s's LNCAP factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     lncap_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
-                    if lncap_data is not None:
+                    if lncap_data is None:
+                        ids.append(Utils.code_to_symbol(stock_info.symbol))
+                        lncaps.append(np.nan)
+                        liquid_caps.append(np.nan)
+                    else:
                         ids.append(lncap_data['code'])
                         lncaps.append(lncap_data['lncap'])
                         liquid_caps.append(lncap_data['liquid_cap'])
@@ -158,7 +163,7 @@ class LNCAP(Factor):
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_lncap, ['date', 'id', 'factorvalue'])
                 Utils.factor_loading_persistent(liquidcap_path, Utils.datetimelike_to_str(calc_date, dash=False), dict_liquidcap, ['date', 'id', 'factorvalue'])
             # 暂停180秒
-            logging.info('Suspending for 180s.')
+            # logging.info('Suspending for 180s.')
             # time.sleep(180)
         return dict_lncap
 

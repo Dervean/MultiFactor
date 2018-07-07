@@ -13,6 +13,10 @@ import pandas as pd
 from pandas import Series
 import numpy as np
 import os
+import logging
+
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 class Factor(object):
     """因子基类"""
@@ -115,6 +119,7 @@ class Factor(object):
         for calc_date in trading_days_series:
             if month_end and (not Utils.is_month_end(calc_date)):
                 continue
+            logging.info('[{}] Calc {} factor loading.'.format(Utils.datetimelike_to_str(calc_date), cls.__name__))
             # 计算各成分因子的因子载荷
             # for com_factor in eval('risk_ct.' + cls.__name__.upper() + '_CT')['component']:
             #     factor = eval(com_factor + '()')

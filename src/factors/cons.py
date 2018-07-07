@@ -6,6 +6,7 @@
 # @Email   : yujun_mail@163.com
 
 from src.util.dottabledict import DottableDict
+import src.settings as SETTINGS
 
 # 基准代码, 用于因子载荷计算中日期序列提取等
 BENCHMARK_CODE = 'SH000001'
@@ -63,8 +64,8 @@ GROWTH_CT = DottableDict({'db_file': 'Growth/Growth',                   # 因子
                           })
 # 因子数据库的路径
 # FACTOR_DB = DottableDict({'db_path': '/Users/davidyujun/Dropbox/FactorDB'})
-FACTOR_DB = DottableDict({'db_path': '/Volumes/DB/FactorDB'})
+FACTOR_DB = DottableDict({'db_path': SETTINGS.FACTOR_DB_PATH})
 
 
 if __name__ == '__main__':
-    pass
+    print(FACTOR_DB.db_path)

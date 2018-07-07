@@ -5,9 +5,12 @@
 # @Author  : YuJun
 # @Email   : yujun_mail@163.com
 
+
+import src.settings as SETTINGS
+
 # 因子数据库根目录
 # DB_PATH = '/Users/davidyujun/Dropbox/FactorDB'
-DB_PATH = '/Volumes/DB/FactorDB'
+DB_PATH = SETTINGS.FACTOR_DB_PATH
 # 个股基本信息数据相对目录
 BASIC_INFO_PATH = 'ElementaryFactor/basic_info'
 # 日行情复权数据相对目录

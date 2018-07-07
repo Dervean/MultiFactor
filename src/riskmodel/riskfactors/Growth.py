@@ -77,7 +77,7 @@ class EGRLF(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc EGRLF factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[{}] Calc EGRLF factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
         egrlf_data = None
         try:
             egrlf_data = cls._calc_factor_loading(code, calc_date)
@@ -133,7 +133,7 @@ class EGRLF(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算EGRLF因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's EGRLF factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    logging.debug("[%s] Calc %s's EGRLF factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     egrlf_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if egrlf_data is None:
                         ids.append(Utils.code_to_symbol(stock_info.symbol))
@@ -159,7 +159,7 @@ class EGRLF(Factor):
             if save:
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_egrlf, ['date', 'id', 'factorvalue'])
             # 暂停180秒
-            logging.info('Suspending for 180s.')
+            # logging.info('Suspending for 180s.')
             # time.sleep(180)
         return dict_egrlf
 
@@ -215,7 +215,7 @@ class EGRSF(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc EGRSF factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[{}] Calc EGRSF factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
         egrsf_data = None
         try:
             egrsf_data = cls._calc_factor_loading(code, calc_date)
@@ -271,7 +271,7 @@ class EGRSF(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算EGRSF因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's EGRSF factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    logging.debug("[%s] Calc %s's EGRSF factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     egrsf_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if egrsf_data is None:
                         ids.append(Utils.code_to_symbol(stock_info.symbol))
@@ -297,7 +297,7 @@ class EGRSF(Factor):
             if save:
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_egrsf, ['date', 'id', 'factorvalue'])
             # 暂停180秒
-            logging.info('Suspending for 180s.')
+            # logging.info('Suspending for 180s.')
             # time.sleep(180)
         return dict_egrsf
 
@@ -439,7 +439,7 @@ class EGRO(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc EGRO factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[{}] Calc EGRO factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
         egro_data = None
         try:
             egro_data = cls._calc_factor_loading(code, calc_date)
@@ -495,7 +495,7 @@ class EGRO(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算EGRO因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's EGRO factor laoding." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    logging.debug("[%s] Calc %s's EGRO factor laoding." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     egro_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if egro_data is None:
                         ids.append(Utils.code_to_symbol(stock_info.symbol))
@@ -521,7 +521,7 @@ class EGRO(Factor):
             if save:
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_egro, ['date', 'id', 'factorvalue'])
             # 暂停180秒
-            logging.info('Suspending for 180s.')
+            # logging.info('Suspending for 180s.')
             # time.sleep(180)
         return dict_egro
 
@@ -585,7 +585,7 @@ class SGRO(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列
         """
-        logging.info('[{}] Calc SGRO factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[{}] Calc SGRO factor of {}.'.format(Utils.datetimelike_to_str(calc_date), code))
         sgro_data = None
         try:
             sgro_data = cls._calc_factor_loading(code, calc_date)
@@ -641,7 +641,7 @@ class SGRO(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算SGRO因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's SGRO factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    logging.debug("[%s] Calc %s's SGRO factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     sgro_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if sgro_data is None:
                         ids.append(Utils.code_to_symbol(stock_info.symbol))
@@ -667,7 +667,7 @@ class SGRO(Factor):
             if save:
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_sgro, ['date', 'id',  'factorvalue'])
             # 暂停280秒
-            logging.info('Suspending for 180s.')
+            # logging.info('Suspending for 180s.')
             # time.sleep(180)
         return dict_sgro
 

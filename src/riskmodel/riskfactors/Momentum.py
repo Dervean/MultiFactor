@@ -51,6 +51,10 @@ class RSTR(Factor):
             return None
         if len(df_secu_quote) < risk_ct.RSTR_CT.half_life:
             return None
+        # 如果行情数据的起始日期距离计算日期的长度大于trailing_start的2倍, 返回None
+        s = Utils.to_date(calc_date) - datetime.timedelta(days=risk_ct.RSTR_CT.trailing_start*2)
+        if Utils.to_date(df_secu_quote.iloc[0]['date']) < s:
+            return None
         df_secu_quote = df_secu_quote.head(len(df_secu_quote) - risk_ct.RSTR_CT.trailing_end)
         df_secu_quote.reset_index(drop=True, inplace=True)
         # 计算个股的日对数收益率
@@ -82,7 +86,7 @@ class RSTR(Factor):
         :param q: 队列, 用于进程间通信
         :return: 添加因子载荷至队列中
         """
-        logging.info('[%s] Calc RSTR factor of %s.' % (Utils.datetimelike_to_str(calc_date), code))
+        logging.debug('[%s] Calc RSTR factor of %s.' % (Utils.datetimelike_to_str(calc_date), code))
         rstr_data = None
         try:
             rstr_data = cls._calc_factor_loading(code, calc_date)
@@ -138,7 +142,7 @@ class RSTR(Factor):
             if not kwargs['multi_proc']:
                 # 采用单进程计算RSTR因子值
                 for _, stock_info in stock_basics.iterrows():
-                    logging.info("[%s] Calc %s's RSTR factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
+                    logging.debug("[%s] Calc %s's RSTR factor loading." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol))
                     rstr_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if rstr_data is None:
                         ids.append(Utils.code_to_symbol(stock_info.symbol))
@@ -164,7 +168,7 @@ class RSTR(Factor):
             if save:
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_rstr, ['date', 'id', 'factorvalue'])
             # 暂停180秒
-            logging.info('Suspending for 180s.')
+            # logging.info('Suspending for 180s.')
             # time.sleep(180)
         return dict_rstr
 
