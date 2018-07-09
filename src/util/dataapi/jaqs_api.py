@@ -35,13 +35,16 @@ class JaqsApi(CDataApi):
         """
         df_basics, msg = cls._api.query(
                                         view='jz.instrumentInfo',
-                                        fields='status,list_date,name,market',
-                                        filter='inst_type=%d&status=1&market=SH,SZ&symbol=' % inst_type,
+                                        fields='delist_date,list_date,status,market,currency',
+                                        filter='inst_type=%d&status=1,3&market=SH,SZ&symbol=' % inst_type,
                                         data_format='pandas')
         if msg != '0,':
             return None
-        df_basics.symbol = df_basics.symbol.map(lambda x: x.split('.')[0])
-        return df_basics
+        # df_basics.symbol = df_basics.symbol.map(lambda x: x.split('.')[0])
+        df_basics.symbol = df_basics.symbol.map(Utils.code_to_symbol)
+        df_basics.symbol = df_basics.symbol.map(str.strip)
+        df_basics.name = df_basics.name.map(str.strip)
+        return df_basics[['symbol', 'name', 'list_date', 'delist_date', 'status', 'market', 'currency']]
 
     @classmethod
     def download_index_cons(cls, idx_code, start_date, end_date):
@@ -75,5 +78,7 @@ class JaqsApi(CDataApi):
 
 
 if __name__ == '__main__':
-    import datetime
-    JaqsApi.download_index_cons('000985', '20050101', datetime.date.today().strftime('%Y%m%d'))
+    # import datetime
+    # JaqsApi.download_index_cons('000985', '20050101', datetime.date.today().strftime('%Y%m%d'))
+    stocks = JaqsApi.get_secu_basics()
+    print(stocks.head())

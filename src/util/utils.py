@@ -63,8 +63,8 @@ class Utils(object):
             date = datetime.date.today()
         date = cls.datetimelike_to_str(date, dash=False)
 
-        df_stock_basics = pd.read_csv(os.path.join(ct.DB_PATH, ct.BASIC_INFO_PATH, 'stock_basics.csv'), dtype={'listed_date': str})
-        df_stock_basics = df_stock_basics[df_stock_basics['listed_date'] <= date]
+        df_stock_basics = pd.read_csv(os.path.join(ct.DB_PATH, ct.BASIC_INFO_PATH, 'stock_basics.csv'), dtype={'list_date': str, 'delist_date': str})
+        df_stock_basics = df_stock_basics[(df_stock_basics['list_date'] <= date) & (df_stock_basics['delist_date'] > date)]
         if remove_st:
             st_stocks = cls.get_st_stocks(date)
             df_stock_basics = df_stock_basics[~df_stock_basics['symbol'].isin(st_stocks)]
@@ -1371,7 +1371,7 @@ if __name__ == '__main__':
     # print(ipo_info)
     # st_stocks = Utils.get_st_stocks()
     # print(st_stocks)
-    # stock_basics = Utils.get_stock_basics(date='2018-01-01', remove_st=True)
-    # print(stock_basics.head(100))
-    print(_code_to_symbol('000300.sH'))
+    stock_basics = Utils.get_stock_basics(date='2018-01-01', remove_st=True)
+    print(stock_basics.head(100))
+    # print(_code_to_symbol('000300.sH'))
 
