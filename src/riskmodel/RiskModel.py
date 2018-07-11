@@ -1,4 +1,4 @@
-#!/usr/bin/env/ python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # @Abstract: 风险模型类文件
 # @Filename: RIskModel
@@ -7,7 +7,7 @@
 # @Email   : yujun_mail@163.com
 
 
-from src.util.utils import Utils
+from src.util.utils import Utils, SecuTradingStatus
 from src.riskmodel.riskfactors.Size import Size
 from src.riskmodel.riskfactors.Beta import Beta
 from src.riskmodel.riskfactors.Momentum import Momentum
@@ -18,6 +18,16 @@ from src.riskmodel.riskfactors.Liquidity import Liquidity
 from src.riskmodel.riskfactors.EarningsYield import EarningsYield
 from src.riskmodel.riskfactors.Growth import Growth
 from src.riskmodel.riskfactors.Leverage import Leverage
+import pandas as pd
+import src.settings as SETTINGS
+import src.riskmodel.cons as riskmodel_ct
+import src.riskmodel.riskfactors.cons as riskfactor_ct
+import os
+import logging
+
+
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 
 class Barra(object):
@@ -52,18 +62,115 @@ class Barra(object):
             NonlinearSize.calc_factor_loading(start_date=calc_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
             Value.calc_factor_loading(start_date=calc_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
             Liquidity.calc_factor_loading(start_date=calc_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
-            EarningsYield.calc_factor_loading(start_date=starcalc_datet_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
+            EarningsYield.calc_factor_loading(start_date=calc_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
             Growth.calc_factor_loading(start_date=calc_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
             Leverage.calc_factor_loading(start_date=calc_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
 
-    def _get_factorloading_matrix(self, date):
+            self._calc_secu_dailyret(calc_date)
+
+    def _calc_secu_dailyret(self, start_date, end_date=None):
+        """
+        计算个股日收益率数据
+        Parameters:
+        --------
+        :param start_date: datetime-like, str
+            计算开始日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :param end_date: datetime-like, str
+            计算结束日期
+        :return:
+            计算全体个股日收益率数据, 保存至数据库
+        """
+        # 读取交易日序列
+        start_date = Utils.to_date(start_date)
+        if end_date is not None:
+            end_date = Utils.to_date(end_date)
+            trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
+        else:
+            trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
+        # 遍历交易日序列, 计算每个交易日的所有上市交易个股的日收益率数据
+        for calc_date in trading_days_series:
+            logging.info('[{}] Calc daily return data.'.format(Utils.datetimelike_to_str(calc_date)))
+            df_dailyret = pd.DataFrame()
+            # 读取在calc_date上市交易的A股代码
+            stock_basics = Utils.get_stock_basics(calc_date)
+            # 遍历个股, 计算日收益率（剔除停牌的个股）
+            for _, stock_info in stock_basics.iterrows():
+                logging.debug('[{}] Calc daily ret of {}.'.format(Utils.datetimelike_to_str(calc_date), stock_info.symbol))
+                # 剔除停牌个股
+                trading_status = Utils.trading_status(stock_info['symbol'], calc_date)
+                if trading_status == SecuTradingStatus.Suspend:
+                    continue
+                # 计算日收益率
+                daily_ret = Utils.calc_interval_ret(stock_info['symbol'], calc_date, calc_date)
+                if daily_ret is None:
+                    continue
+                df_dailyret = df_dailyret.append(pd.Series([stock_info.symbol, calc_date, round(daily_ret, 6)], index=['code', 'date', 'ret']), ignore_index=True)
+            # 保存每个交易日的收益率数据
+            dailyret_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.DAILY_RET_PATH, '{}.csv'.format(Utils.datetimelike_to_str(calc_date, dash=False)))
+            df_dailyret.to_csv(dailyret_path, index=False, encoding='utf-8')
+
+    def _calc_IndFactorloading(self, date):
         """
 
         :param date:
         :return:
         """
 
+    def _calc_StyleFactorloading(self, date):
+        """
+
+        :param date:
+        :return:
+        """
+
+    def _get_cap_weight(self, date):
+        """
+        读取指定日期上市个股的流通市值权重, 剔除停牌个股
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            计算日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :return: pd.DataFrame, 个股流通市值权重数据
+        --------
+            0. code: 个股代码
+            1. weight: 流通市值权重
+            计算失败, 返回None
+        """
+        date = Utils.to_date(date)
+        # 读取个股流通市值数据
+        cap_data_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskfactor_ct.LNCAP_CT.liquidcap_dbfile)
+        df_cap_data = Utils.read_factor_loading(cap_data_path, Utils.datetimelike_to_str(date, dash=False))
+        # 计算个股流通市值权重
+        sum_cap = df_cap_data['factorvalue'].sum()
+        df_cap_data['weight'] = df_cap_data['factorvalue'] / sum_cap
+        # 读取个股停牌信息
+        df_suspension_info = Utils.get_suspension_info(date)
+        if df_suspension_info is None:
+            return None
+        # 个股流通市值数据剔除停牌个股
+        df_cap_data = df_cap_data[~df_cap_data['id'].isin(df_suspension_info['symbol'])]
+
+        df_cap_data.drop(columns=['date', 'factorvalue'], inplace=True)
+        df_cap_data.rename(columns={'id': 'code'}, inplace=True)
+        df_cap_data.reset_index(drop=True, inplace=True)
+        return df_cap_data
+
+    def _get_IndFactorloading_matrix(self, date):
+        """
+        读取行业因子载荷数据
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            读取日期
+        :return: pd.DataFrame
+        --------
+            0. code: 个股代码
+            1...30: 行业因子载荷
+        """
+
 
 if __name__ == '__main__':
     BarraModel = Barra()
-    BarraModel.calc_factorloading('2017-12-29')
+    # BarraModel.calc_factorloading('2017-12-29')
+    # BarraModel._calc_secu_dailyret('2017-12-29')
+    BarraModel._get_cap_weight('2017-12-29')

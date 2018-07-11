@@ -10,6 +10,8 @@ import os
 import csv
 import datetime
 import pandas as pd
+from src.util.utils import Utils, SecuTradingStatus
+import src.settings as SETTINGS
 
 
 def load_mkt_1min(tm, tmtype):
@@ -70,6 +72,7 @@ def load_mkt_1min(tm, tmtype):
     #                         dstFile.write(strHeader)
     #                         csvWriter = csv.writer(dstFile)
     #                         csvWriter.writerows(dstRows)
+
 
 def _write_1min_FQ_data(mkt_file_path, db_path):
     """
@@ -256,7 +259,29 @@ def load_mkt_daily(is_one_day=False, str_date=None, is_index_data=False):
                         csvWriter.writerows(dstRows)
 
 
-if __name__ == '__main__':
-    load_mkt_1min('20180109', 'D')
+def calc_suspension_info(date):
+    """
+    计算个股停牌信息
+    Parameters:
+    --------
+    :param date: datetime-like, str
+        计算日期, e.g: YYYY-MM-DD, YYYYMMDD
+    :return:
+    """
+    date = Utils.to_date(date)
+    df_stock_basics = Utils.get_stock_basics(date)
+    df_stock_basics['trading_status'] = df_stock_basics.apply(lambda x: Utils.trading_status(x['symbol'], date), axis=1)
+    df_stock_basics = df_stock_basics[df_stock_basics['trading_status'] == SecuTradingStatus.Suspend]
+    df_stock_basics.drop(columns='trading_status', inplace=True)
 
-    load_mkt_daily(is_one_day=True, str_date='2018-01-09', is_index_data=False)
+    cfg = ConfigParser()
+    cfg.read('config.ini')
+    suspension_info_path = os.path.join(SETTINGS.FACTOR_DB_PATH, cfg.get('suspension_info', 'info_path'), '{}.csv'.format(Utils.datetimelike_to_str(date, dash=False)))
+    df_stock_basics.to_csv(suspension_info_path, index=False, encoding='utf-8')
+
+if __name__ == '__main__':
+    # load_mkt_1min('20180109', 'D')
+
+    # load_mkt_daily(is_one_day=True, str_date='2018-01-09', is_index_data=False)
+
+    calc_suspension_info('2017-12-29')

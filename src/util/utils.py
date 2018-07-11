@@ -43,7 +43,7 @@ class Utils(object):
     _DataCache = Cache(500)    # 数据缓存
 
     @classmethod
-    def get_stock_basics(cls, date=None, remove_st=False):
+    def get_stock_basics(cls, date=None, remove_st=False, remove_suspension=False):
         """
         读取上市交易个股列表信息
         Parameters:
@@ -53,6 +53,8 @@ class Utils(object):
             默认为None, 读取最新的上市交易个股信息列表
         :param remove_st: bool
             是否剔除st个股, 默认为False, 即不剔除
+        :param remove_suspension: bool
+            是否剔除停牌个股, 默认为False, 即不剔除
         :return: pd.DataFrame
         --------
             0. symbol: 个股代码
@@ -68,6 +70,9 @@ class Utils(object):
         if remove_st:
             st_stocks = cls.get_st_stocks(date)
             df_stock_basics = df_stock_basics[~df_stock_basics['symbol'].isin(st_stocks)]
+        if remove_suspension:
+            df_suspension_info = cls.get_suspension_info(date)
+            df_stock_basics = df_stock_basics[~df_stock_basics['symbol'].isin(df_suspension_info['symbol'])]
         df_stock_basics.reset_index(drop=True, inplace=True)
         return df_stock_basics
 
@@ -93,6 +98,32 @@ class Utils(object):
             return set()
         else:
             return set(df_st_info['code'])
+
+    @classmethod
+    def get_suspension_info(cls, date):
+        """
+        读取指定日期个股停牌信息数据
+        Parameters:
+        --------
+        :param date: datetime-like or str
+            交易日期, e.g: YYYY-MM-DD or YYYYMMDD
+        :return: pd.DataFrame
+        --------
+            0. symbol:      个股代码
+            1. name:        个股简称
+            2. list_date:   上市日期
+            3. delist_date: 退市日期
+            4. status:      状态, 1=上市, 3=退市
+            5. market:      交易市场, SH=上交所, SZ=深交所
+            6. currency:    交易货币
+            读取失败, 返回None
+        """
+        suspension_info_path = os.path.join(ct.DB_PATH, ct.SUSPENSION_INOF_PATH, '{}.csv'.format(cls.datetimelike_to_str(date, dash=False)))
+        if os.path.exists(suspension_info_path):
+            df_suspension_info = pd.read_csv(suspension_info_path, header=0)
+            return df_suspension_info
+        else:
+            return None
 
     @classmethod
     def calc_interval_ret(cls, secu_code, start=None, end=None, ndays=None):
@@ -1371,7 +1402,7 @@ if __name__ == '__main__':
     # print(ipo_info)
     # st_stocks = Utils.get_st_stocks()
     # print(st_stocks)
-    stock_basics = Utils.get_stock_basics(date='2018-01-01', remove_st=True)
+    stock_basics = Utils.get_stock_basics(date='2017-12-29', remove_st=True, remove_suspension=True)
     print(stock_basics.head(100))
     # print(_code_to_symbol('000300.sH'))
 

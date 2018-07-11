@@ -13,6 +13,8 @@ import src.settings as SETTINGS
 DB_PATH = SETTINGS.FACTOR_DB_PATH
 # 个股基本信息数据相对目录
 BASIC_INFO_PATH = 'ElementaryFactor/basic_info'
+# 个股停牌信息数据相对目录
+SUSPENSION_INOF_PATH = 'ElementaryFactor/suspension_info'
 # 日行情复权数据相对目录
 MKT_DAILY_FQ = 'ElementaryFactor/mkt_daily_FQ'
 # 日行情非复权数据相对目录

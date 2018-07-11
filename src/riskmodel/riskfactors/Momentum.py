@@ -11,6 +11,7 @@ from src.factors.factor import Factor
 import src.riskmodel.riskfactors.cons as risk_ct
 import src.factors.cons as factor_ct
 from src.util.utils import Utils
+from src.util.algo import Algo
 from src.util.dataapi.CDataHandler import CDataHandler
 import pandas as pd
 import numpy as np
@@ -63,12 +64,13 @@ class RSTR(Factor):
         arr_secu_daily_ret = np.log(arr_secu_close / arr_secu_preclose)
         # 计算权重(指数移动加权平均)
         T = len(arr_secu_daily_ret)
-        time_spans = sorted(range(T), reverse=True)
-        alpha = 1 - np.exp(np.log(0.5)/risk_ct.RSTR_CT.half_life)
-        x = [1-alpha] * T
-        y = [alpha] * (T-1)
-        y.insert(0, 1)
-        weights = np.float_power(x, time_spans) * y
+        # time_spans = sorted(range(T), reverse=True)
+        # alpha = 1 - np.exp(np.log(0.5)/risk_ct.RSTR_CT.half_life)
+        # x = [1-alpha] * T
+        # y = [alpha] * (T-1)
+        # y.insert(0, 1)
+        # weights = np.float_power(x, time_spans) * y
+        weights = Algo.ewma_weight(T, risk_ct.RSTR_CT.half_life)
         # 计算RSTR
         rstr = np.sum(arr_secu_daily_ret * weights)
         return pd.Series([Utils.code_to_symbol(code), rstr], index=['code', 'rstr'])

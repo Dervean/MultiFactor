@@ -42,7 +42,7 @@ def load_stock_basics(date=None):
 
     stock_basics = CDataHandler.DataApi.get_secu_basics()
 
-    Erratas = {'SH601313': {'delist_date': 20180226}}   # 勘误表
+    Erratas = {'SH601313': {'delist_date': 20180226, 'status': 3}}   # 勘误表
     for code, errata_info in Erratas.items():
         for column, value in errata_info.items():
             stock_basics.loc[stock_basics[stock_basics['symbol']==code].index, column] = value

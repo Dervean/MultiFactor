@@ -11,6 +11,7 @@ from src.factors.factor import Factor
 import src.riskmodel.riskfactors.cons as risk_ct
 import src.factors.cons as factor_ct
 from src.util.utils import Utils
+from src.util.algo import Algo
 # import src.util.cons as util_ct
 from src.util.dataapi.CDataHandler import CDataHandler
 import pandas as pd
@@ -77,12 +78,13 @@ class DBETA(Factor):
         arr_benchmark_daily_ret = arr_benchmark_close / arr_benchmark_preclose - 1.
         # 计算权重(指数移动加权平均)
         T = len(arr_benchmark_daily_ret)
-        time_spans = sorted(range(T), reverse=True)
-        alpha = 1 - np.exp(np.log(0.5)/risk_ct.DBETA_CT.half_life)
-        x = [1-alpha] * T
-        y = [alpha] * (T-1)
-        y.insert(0, 1)
-        weights = np.float_power(x, time_spans) * y
+        # time_spans = sorted(range(T), reverse=True)
+        # alpha = 1 - np.exp(np.log(0.5)/risk_ct.DBETA_CT.half_life)
+        # x = [1-alpha] * T
+        # y = [alpha] * (T-1)
+        # y.insert(0, 1)
+        # weights = np.float_power(x, time_spans) * y
+        weights = Algo.ewma_weight(T, risk_ct.DBETA_CT.half_life)
         # 采用加权最小二乘法计算Beta因子载荷及hsigma
         arr_benchmark_daily_ret = sm.add_constant(arr_benchmark_daily_ret)
         cap_model = sm.WLS(arr_secu_daily_ret, arr_benchmark_daily_ret, weights=weights)
