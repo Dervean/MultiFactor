@@ -67,6 +67,18 @@ class Barra(object):
             Leverage.calc_factor_loading(start_date=calc_date, end_date=None, month_end=False, save=True, multi_proc=multi_prc)
 
             self._calc_secu_dailyret(calc_date)
+            self._calc_IndFactorloading(calc_date)
+            self._calc_StyleFactorloading(calc_date)
+
+    def estimate_factor_ret(self, start_date, end_date=None):
+        """
+        估计风险因子的因子报酬
+        Parameters:
+        --------
+        :param start_date:
+        :param end_date:
+        :return:
+        """
 
     def _calc_secu_dailyret(self, start_date, end_date=None):
         """
@@ -104,24 +116,61 @@ class Barra(object):
                 daily_ret = Utils.calc_interval_ret(stock_info['symbol'], calc_date, calc_date)
                 if daily_ret is None:
                     continue
-                df_dailyret = df_dailyret.append(pd.Series([stock_info.symbol, calc_date, round(daily_ret, 6)], index=['code', 'date', 'ret']), ignore_index=True)
+                df_dailyret = df_dailyret.append(pd.Series([stock_info.symbol, round(daily_ret, 6)], index=['code', 'ret']), ignore_index=True)
             # 保存每个交易日的收益率数据
-            dailyret_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.DAILY_RET_PATH, '{}.csv'.format(Utils.datetimelike_to_str(calc_date, dash=False)))
-            df_dailyret.to_csv(dailyret_path, index=False, encoding='utf-8')
+            # dailyret_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.DAILY_RET_PATH, '{}.csv'.format(Utils.datetimelike_to_str(calc_date, dash=False)))
+            # df_dailyret.to_csv(dailyret_path, index=False, encoding='utf-8')
+
+            dailyret_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.DAILY_RET_PATH)
+            Utils.factor_loading_persistent(dailyret_path, Utils.datetimelike_to_str(calc_date, dash=False), df_dailyret)
 
     def _calc_IndFactorloading(self, date):
         """
-
-        :param date:
+        计算风险模型行业因子载荷矩阵, 保存至数据库
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            计算日期
         :return:
         """
+        logging.info('[{}] Calc industry factor loading matrix.'.format(Utils.datetimelike_to_str(date)))
+        # 读取指定日期的行业分类数据
+        df_IndClassify_data = Utils.get_industry_classify(date)
+        # 构造行业因子载荷矩阵, 并保存至数据库
+        if not df_IndClassify_data is None:
+            df_IndClassify_data = df_IndClassify_data.set_index('id')
+            df_IndClassify_data.index.name = 'code'
+            df_IndFactorloading = pd.get_dummies(df_IndClassify_data['ind_code'])
+            df_IndFactorloading.reset_index(inplace=True)
+            indfactorloading_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.INDUSTRY_FACTORLOADING_PATH)
+            Utils.factor_loading_persistent(indfactorloading_path, Utils.datetimelike_to_str(date, dash=False), df_IndFactorloading)
+            # df_IndFactorloading.to_csv(os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.INDUSTRY_FACTORLOADING_PATH, 'ind_factorloading_{}.csv'.format(Utils.datetimelike_to_str(date, dash=False))))
 
     def _calc_StyleFactorloading(self, date):
         """
-
-        :param date:
+        计算风险模型中风格因子载荷矩阵, 保存至数据库
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            计算日期
         :return:
         """
+        logging.info('[{}] Calc style factor loading matrix.'.format(Utils.datetimelike_to_str(date)))
+        df_stylefactorloading_matrix = pd.DataFrame()
+        for risk_factor in riskfactor_ct.RISK_FACTORS:
+            factorloading_path = os.path.join(SETTINGS.FACTOR_DB_PATH, eval('riskfactor_ct.%s_CT' % risk_factor.upper())['db_file'])
+            df_factor_loading = Utils.read_factor_loading(factorloading_path, Utils.datetimelike_to_str(date, dash=False))
+            df_factor_loading.drop(columns='date', inplace=True)
+            df_factor_loading.rename(index=str, columns={'factorvalue': risk_factor}, inplace=True)
+            if df_stylefactorloading_matrix.empty:
+                df_stylefactorloading_matrix = df_factor_loading
+            else:
+                df_stylefactorloading_matrix = pd.merge(left=df_stylefactorloading_matrix, right=df_factor_loading, how='inner', on='id')
+        if not df_stylefactorloading_matrix.empty:
+            df_stylefactorloading_matrix.rename(index=str, columns={'id': 'code'}, inplace=True)
+
+        stylefactorloading_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.STYLE_FACTORLOADING_PATH)
+        Utils.factor_loading_persistent(stylefactorloading_path, Utils.datetimelike_to_str(date, dash=False), df_stylefactorloading_matrix)
 
     def _get_cap_weight(self, date):
         """
@@ -155,9 +204,29 @@ class Barra(object):
         df_cap_data.reset_index(drop=True, inplace=True)
         return df_cap_data
 
+    def _get_secu_dailyret(self, date):
+        """
+        读取个股日收益率数据向量
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            读取日期
+        :return: pd.DataFrame
+        --------
+            0. code: 个股代码
+            1. ret: 个股日收益率
+            读取失败, 返回None
+        """
+        secu_dailyret_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.DAILY_RET_PATH)
+        df_secudailyret = Utils.read_factor_loading(secu_dailyret_path, Utils.datetimelike_to_str(date, dash=False))
+        if df_secudailyret.empty:
+            return None
+        else:
+            return df_secudailyret
+
     def _get_IndFactorloading_matrix(self, date):
         """
-        读取行业因子载荷数据
+        读取行业因子载荷矩阵
         Parameters:
         --------
         :param date: datetime-like, str
@@ -166,11 +235,43 @@ class Barra(object):
         --------
             0. code: 个股代码
             1...30: 行业因子载荷
+            读取失败, 返回None
         """
+        indfactorloading_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.INDUSTRY_FACTORLOADING_PATH)
+        df_IndFactorloading = Utils.read_factor_loading(indfactorloading_path, Utils.datetimelike_to_str(date, dash=False))
+        if df_IndFactorloading.empty:
+            return None
+        else:
+            return df_IndFactorloading
+
+    def _get_StyleFactorloading_matrix(self, date):
+        """
+        读取风格因子载荷矩阵
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            读取日期
+        :return: pd.DataFrame
+        --------
+            0. code: 个股代码
+            1...10: 风格因子载荷
+            读取失败, 返回None
+        """
+        stylefactorloading_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.STYLE_FACTORLOADING_PATH)
+        df_StyleFactorloading = Utils.read_factor_loading(stylefactorloading_path, Utils.datetimelike_to_str(date, dash=False))
+        if df_StyleFactorloading.empty:
+            return None
+        else:
+            return df_StyleFactorloading
 
 
 if __name__ == '__main__':
     BarraModel = Barra()
     # BarraModel.calc_factorloading('2017-12-29')
     # BarraModel._calc_secu_dailyret('2017-12-29')
-    BarraModel._get_cap_weight('2017-12-29')
+    # BarraModel._get_cap_weight('2017-12-29')
+    # BarraModel._calc_IndFactorloading('2017-12-29')
+    # BarraModel._calc_StyleFactorloading('2017-12-29')
+    # print(BarraModel._get_IndFactorloading_matrix('2017-12-29').head())
+    # print(BarraModel._get_StyleFactorloading_matrix('2017-12-29').head())
+    print(BarraModel._get_secu_dailyret('2018-01-02').head())

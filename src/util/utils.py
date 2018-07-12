@@ -163,10 +163,20 @@ class Utils(object):
                 if inds[0] > 0:
                     inds.insert(0, inds[0]-1)
                     df_mkt = df_mkt.ix[inds]
+                    interval_ret = df_mkt.iloc[-1, 5] / df_mkt.iloc[0, 5] - 1.0
                 else:
-                    # 如果开始日期小于等于该证券上市日期，那么把第一天的收盘价设置为开盘价
-                    df_mkt.iloc[0, 5] = df_mkt.iat[0, 3]
-                interval_ret = df_mkt.iloc[-1, 5]/df_mkt.iloc[0, 5] - 1.0
+                    # 如果开始日期小于等于该证券上市日期，那么起始价格取发行价(若有)或上市日期开盘价(若没有发行价)
+                    df_mkt = df_mkt.loc[inds]
+                    ipo_info = cls.get_ipo_info(symbol)
+                    if ipo_info is None:
+                        interval_ret = df_mkt.iloc[-1, 5] / df_mkt.iloc[0, 2] -1.0
+                    else:
+                        if ipo_info['发行价格'][:-1] != '--':
+                            ipo_price = float(ipo_info['发行价格'][:-1])
+                            interval_ret = df_mkt.iloc[-1, 5] / ipo_price - 1.0
+                        else:
+                            interval_ret = df_mkt.iloc[-1, 5] / df_mkt.iloc[0, 2] - 1.0
+                # interval_ret = df_mkt.iloc[-1, 5]/df_mkt.iloc[0, 5] - 1.0
             else:
                 # 如果在指定的开始、结束日期间该证券没有行情数据，返回None
                 interval_ret = None
@@ -903,9 +913,29 @@ class Utils(object):
         return secu_ind_dist
 
     @classmethod
-    def get_industry_classify(cls):
-        """读取行业分类数据（申万一级行业）"""
-        sw_classify_data_path = os.path.join(ct.DB_PATH, ct.INDUSTRY_CLASSIFY_DATA_PATH, 'industry_classify_sw.csv')
+    def get_industry_classify(cls, date=None):
+        """
+        读取行业分类数据（申万一级行业）
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            日期
+        :return: pd.DataFrame
+        --------
+            行业分类数据
+            0. id: 个股代码
+            1. ind_code: 行业代码
+            2. ind_name: 行业名称
+            读取失败, 返回None
+        """
+        if date is None:
+            sw_classify_data_path = os.path.join(ct.DB_PATH, ct.INDUSTRY_CLASSIFY_DATA_PATH, 'industry_classify_sw.csv')
+        else:
+            sw_classify_data_path = os.path.join(ct.DB_PATH, ct.INDUSTRY_CLASSIFY_DATA_PATH, 'industry_classify_sw_{}.csv'.format(cls.datetimelike_to_str(date, dash=False)))
+            if not os.path.exists(sw_classify_data_path):
+                sw_classify_data_path = os.path.join(ct.DB_PATH, ct.INDUSTRY_CLASSIFY_DATA_PATH, 'industry_classify_sw.csv')
+        if not os.path.exists(sw_classify_data_path):
+            return None
         df_ind_classify = pd.read_csv(sw_classify_data_path, names=['id', 'ind_code', 'ind_name'], header=0)
         return df_ind_classify
 
@@ -1374,7 +1404,7 @@ def _port_data_to_wind(port_data_file, wind_data_file, df_port_nav):
 
 if __name__ == '__main__':
     # test calc_interval_ret
-    # ret = Utils.calc_interval_ret('600000', start=datetime.datetime.strptime('2016-01-01', '%Y-%m-%d'), end='2016-10-16')
+    ret = Utils.calc_interval_ret('603329', start='2017-12-29', end='2017-12-29')
     # print('ret = %0.4f' % ret)
     # test get_trading_days
     # trading_days = Utils.get_trading_days(start=datetime.datetime.strptime('2017-01-01', '%Y-%m-%d'), end='20171031', ndays=10)
@@ -1398,8 +1428,8 @@ if __name__ == '__main__':
     # print(df.head())
     # secu_ind_dist = Utils.get_ind_dist('600000')
     # print(secu_ind_dist)
-    # ipo_info = Utils.get_ipo_info('600000')
-    # print(ipo_info)
+    ipo_info = Utils.get_ipo_info('603329')
+    print(ipo_info)
     # st_stocks = Utils.get_st_stocks()
     # print(st_stocks)
     stock_basics = Utils.get_stock_basics(date='2017-12-29', remove_st=True, remove_suspension=True)

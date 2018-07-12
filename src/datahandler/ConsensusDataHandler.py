@@ -50,10 +50,10 @@ def load_predictedearning_data(date=None):
     #     df_predictedearnings.to_csv(dst_data_path, index=True, header=True)
 
     if date is None:
-        raw_data_path = os.path.join(cfg.get('consensus_data', 'consensus_raw_path'), 'PredictedEarnings.csv')
+        raw_data_path = os.path.join(cfg.get('consensus_data', 'consensus_raw_path'), 'predicted_earnings.csv')
     else:
         str_date = str(date).replace('-', '')
-        raw_data_path = os.path.join(cfg.get('consensus_data', 'consensus_raw_path'), 'PredictedEarnings_{}.csv'.format(str_date))
+        raw_data_path = os.path.join(cfg.get('consensus_data', 'consensus_raw_path'), 'predicted_earnings_{}.csv'.format(str_date))
     df_predictedearnings = pd.read_csv(raw_data_path, header=0, index_col=0)
     for strdate in df_predictedearnings.columns.values.tolist():
         print('Loading Predicted Earnings data of {}.'.format(strdate))
@@ -104,5 +104,5 @@ def load_predictedgrowth_data(date=None):
 
 if __name__ == '__main__':
     # pass
-    # load_predictedearning_data(2010)
-    load_predictedgrowth_data(2010)
+    # load_predictedearning_data(2017)
+    load_predictedgrowth_data(2017)
