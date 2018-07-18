@@ -23,9 +23,13 @@ def load_stock_basics(date=None):
         日期, 默认为上一个交易日
     :return: 保存个股基本信息数据至stock_basics.csv文件
     --------
-        0. code 个股代码
+        0. symbol 个股代码
         1. name 个股名称
-        2. listed_date 上市日期
+        2. list_date 上市日期
+        3. delist_date 退市日期
+        4. status 上市状态, 1=上市交易, 3=已退市
+        5. market 市场, SH=上交所, SZ=深交所
+        6. currency 交易货币
     """
     # stock_basics = ts.get_stock_basics(date)
     #
@@ -42,7 +46,8 @@ def load_stock_basics(date=None):
 
     stock_basics = CDataHandler.DataApi.get_secu_basics()
 
-    Erratas = {'SH601313': {'delist_date': 20180226, 'status': 3}}   # 勘误表
+    Erratas = {'SH601313': {'delist_date': 20180226, 'status': 3},
+               'SH601360': {'list_date': 20180228}}   # 勘误表
     for code, errata_info in Erratas.items():
         for column, value in errata_info.items():
             stock_basics.loc[stock_basics[stock_basics['symbol']==code].index, column] = value
@@ -66,7 +71,7 @@ def load_st_info():
     st_end_types = cfg.get('st_info', 'st_end_types').split(',')
 
     df_st_rawinfo = pd.read_csv(os.path.join(raw_data_path, 'st_info.csv'), header=0)
-    df_st_rawinfo = df_st_rawinfo[df_st_rawinfo['st_info'] != '0']
+    df_st_rawinfo = df_st_rawinfo[(df_st_rawinfo['st_info'] != '0') & (~df_st_rawinfo['st_info'].isna())]
     df_st_info = pd.DataFrame(columns=['code', 'st_start', 'st_end'])
     for _, st_data in df_st_rawinfo.iterrows():
         st_start_date = None

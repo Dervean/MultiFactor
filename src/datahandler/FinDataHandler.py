@@ -22,19 +22,21 @@ def load_fin_data_basics():
     zycwzb_url = cfg.get('fin_data', 'zycwzb_url')
     db_path = os.path.join(cfg.get('factor_db', 'db_path'), cfg.get('fin_data', 'zycwzb_path'))
     # 读取个股代码
-    data_api = DataApi(addr='tcp://data.tushare.org:8910')
-    data_api.login('13811931480', 'eyJhbGciOiJIUzI1NiJ9.eyJjcmVhdGVfdGltZSI6IjE1MTI4Nzk0NTI2MjkiLCJpc3MiOiJhdXRoMCIsImlkIjoiMTM4MTE5MzE0ODAifQ.I0SXsA1bK--fbGu0B5Is2xdKOjALAeWBJRX6GdVmUL8')
-    df_stock_basics, msg = data_api.query(view='jz.instrumentInfo',
-                                          fields='status,list_date,name,market',
-                                          filter='inst_type=1&status=1&market=SH,SZ&symbol=',
-                                          data_format='pandas')
-    if msg != '0,':
-        print('读取市场个股代码失败。')
-        return
-    df_stock_basics.symbol = df_stock_basics.symbol.map(lambda x: x.split('.')[0])
+    # data_api = DataApi(addr='tcp://data.tushare.org:8910')
+    # data_api.login('13811931480', 'eyJhbGciOiJIUzI1NiJ9.eyJjcmVhdGVfdGltZSI6IjE1MTI4Nzk0NTI2MjkiLCJpc3MiOiJhdXRoMCIsImlkIjoiMTM4MTE5MzE0ODAifQ.I0SXsA1bK--fbGu0B5Is2xdKOjALAeWBJRX6GdVmUL8')
+    # df_stock_basics, msg = data_api.query(view='jz.instrumentInfo',
+    #                                       fields='status,list_date,name,market',
+    #                                       filter='inst_type=1&status=1&market=SH,SZ&symbol=',
+    #                                       data_format='pandas')
+    # if msg != '0,':
+    #     print('读取市场个股代码失败。')
+    #     return
+    # df_stock_basics.symbol = df_stock_basics.symbol.map(lambda x: x.split('.')[0])
+
+    df_stock_basics = Utils.get_stock_basics(all=True)
     # 遍历个股，下载财务数据
     for _, stock_info in df_stock_basics.iterrows():
-        url = zycwzb_url % stock_info.symbol
+        url = zycwzb_url % stock_info.symbol[-6:]
         resp = requests.get(url)
         if resp.status_code != requests.codes.ok:
             print('%s的财务数据下载失败!' % stock_info.symbol)
@@ -60,26 +62,30 @@ def load_fin_data_cwbbzy():
     cwbbzy_url = cfg.get('fin_data', 'cwbbzy_url')
     cwbbzy_path = os.path.join(cfg.get('factor_db', 'db_path'), cfg.get('fin_data', 'cwbbzy_path'))
     # 读取个股代码
-    data_api = DataApi(addr='tcp://data.tushare.org:8910')
-    data_api.login('13811931480',
-                   'eyJhbGciOiJIUzI1NiJ9.eyJjcmVhdGVfdGltZSI6IjE1MTI4Nzk0NTI2MjkiLCJpc3MiOiJhdXRoMCIsImlkIjoiMTM4MTE5MzE0ODAifQ.I0SXsA1bK--fbGu0B5Is2xdKOjALAeWBJRX6GdVmUL8')
-    df_stock_basics, msg = data_api.query(view='jz.instrumentInfo',
-                                          fields='status,list_date,name,market',
-                                          filter='inst_type=1&status=1&market=SH,SZ&symbol=',
-                                          data_format='pandas')
-    if msg != '0,':
-        print('读取市场个股代码失败。')
-        return
-    df_stock_basics.symbol = df_stock_basics.symbol.map(lambda x: x.split('.')[0])
+    # data_api = DataApi(addr='tcp://data.tushare.org:8910')
+    # data_api.login('13811931480',
+    #                'eyJhbGciOiJIUzI1NiJ9.eyJjcmVhdGVfdGltZSI6IjE1MTI4Nzk0NTI2MjkiLCJpc3MiOiJhdXRoMCIsImlkIjoiMTM4MTE5MzE0ODAifQ.I0SXsA1bK--fbGu0B5Is2xdKOjALAeWBJRX6GdVmUL8')
+    # df_stock_basics, msg = data_api.query(view='jz.instrumentInfo',
+    #                                       fields='status,list_date,name,market',
+    #                                       filter='inst_type=1&status=1&market=SH,SZ&symbol=',
+    #                                       data_format='pandas')
+    # if msg != '0,':
+    #     print('读取市场个股代码失败。')
+    #     return
+    # df_stock_basics.symbol = df_stock_basics.symbol.map(lambda x: x.split('.')[0])
+
+    df_stock_basics = Utils.get_stock_basics(all=True)
     # 遍历个股, 下载财务报表摘要数据
     for _, stock_info in df_stock_basics.iterrows():
-        url = cwbbzy_url % stock_info.symbol
+        url = cwbbzy_url % stock_info.symbol[-6:]
         resp = requests.get(url)
         if resp.status_code != requests.codes.ok:
             print('%s的财务报表摘要数据下载失败！' % stock_info.symbol)
             continue
         print('下载%s的财务报表摘要数据.' % stock_info.symbol)
         fin_data = resp.text
+        if '暂无数据' in fin_data:
+            continue
         tmp = fin_data.split(',')[-1]
         fin_data = fin_data.replace(tmp, '')
         fin_data = fin_data.split('\r\n')

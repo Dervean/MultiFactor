@@ -32,6 +32,10 @@ def load_mkt_1min(tm, tmtype):
         return
     db_path = os.path.join(cfg.get('factor_db', 'db_path'), cfg.get('mkt_data_1min', 'db_path'))
 
+    if not os.path.isdir(raw_data_path):
+        print('\033[1:31;40mDir of %s does not exists.\033[0m' % tm)
+        return
+
     for mkt_file_name in os.listdir(raw_data_path):
         if os.path.splitext(mkt_file_name)[1] != '.csv':
             continue
@@ -142,7 +146,9 @@ def load_mkt_daily(is_one_day=False, str_date=None, is_index_data=False):
     db_path_nofq = os.path.join(cfg.get('factor_db', 'db_path'), cfg.get('mkt_data_daily', 'db_path_NoFQ'))
 
     if is_one_day:
-        if os.path.isfile(raw_data_path_by_daily):
+        if not os.path.isfile(raw_data_path_by_daily):
+            print('\033[1;31;40mDaily mkt data of %s does not exist.\033[0m' % str_date)
+        else:
             # print('processing file %s' % raw_data_path_by_daily)
             with open(raw_data_path_by_daily, 'r', newline='', encoding='GB18030') as raw_file:
                 csv_reader = csv.reader(raw_file)
@@ -282,6 +288,6 @@ def calc_suspension_info(date):
 if __name__ == '__main__':
     # load_mkt_1min('20180109', 'D')
 
-    # load_mkt_daily(is_one_day=True, str_date='2018-01-09', is_index_data=False)
+    # load_mkt_daily(is_one_day=True, str_date='2018-01-12', is_index_data=False)
 
-    calc_suspension_info('2017-12-29')
+    calc_suspension_info('2018-01-12')

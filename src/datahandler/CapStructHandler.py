@@ -9,15 +9,20 @@
 from configparser import ConfigParser
 import os
 import pandas as pd
+from src.util.utils import Utils
 
 
-def load_cap_struct():
+def load_cap_struct(date):
     """导入个股最新股本结构数据"""
+    date = Utils.datetimelike_to_str(date, dash=False)
     cfg = ConfigParser()
     cfg.read('config.ini')
     raw_data_path = cfg.get('cap_struct', 'raw_data_path')
     db_path = cfg.get('cap_struct', 'db_path')
-    df_cap_struct = pd.read_csv(os.path.join(raw_data_path, 'cap_struct.csv'),
+    if not os.path.isfile(os.path.join(raw_data_path, '{}.csv'.format(date))):
+        print('\033[1;31;40mCap struct file of %s does not exits.\033[0m' % date)
+        return
+    df_cap_struct = pd.read_csv(os.path.join(raw_data_path, '{}.csv'.format(date)),
                                 names=['mkt', 'code', 'date', 'reason', 'total', 'liquid_a', 'liquid_b', 'liquid_h'],
                                 header=0, encoding='GB18030', dtype={'code': str})
     df_cap_struct.code = df_cap_struct.apply(lambda x: x.mkt + x.code, axis=1)
@@ -35,4 +40,4 @@ def load_cap_struct():
 
 
 if __name__ == '__main__':
-    load_cap_struct()
+    load_cap_struct('2018-01-10')

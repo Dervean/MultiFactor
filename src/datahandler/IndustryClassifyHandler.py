@@ -14,6 +14,8 @@ from pandas import DataFrame
 import requests
 import re
 import json
+import datetime
+from src.util.utils import Utils
 
 
 def download_sw_fyjr_classify():
@@ -39,12 +41,12 @@ def download_sw_fyjr_classify():
     df_sw_fyjr.to_csv(file_path, index=False)
 
 
-def load_industry_classify(standard='sw'):
+def load_industry_classify(standard='sw', date=datetime.date.today()):
     """导入个股行业分类数据"""
     cfg = ConfigParser()
     cfg.read('config.ini')
     # 读取申万一级行业信息
-    sw_classify_info_path = os.path.join(cfg.get('industry_classify', 'classify_data_path'), 'classify_standard_sw.csv')
+    sw_classify_info_path = os.path.join(cfg.get('factor_db', 'db_path'), cfg.get('industry_classify', 'classify_data_path'), 'classify_standard_sw.csv')
     df_sw_classify = pd.read_csv(sw_classify_info_path, names=['ind_code', 'ind_name'], header=0)
     # 读取申万非银金融下二级行业信息
     sw_fyjr_classify_path = os.path.join(cfg.get('industry_classify', 'raw_data_path'), 'sw_fyjr_classify.csv')
@@ -63,16 +65,50 @@ def load_industry_classify(standard='sw'):
                 ind_name = df_sw_fyjr_classify[df_sw_fyjr_classify.code == row[1]].iloc[0].c_name
             ind_code = df_sw_classify[df_sw_classify.ind_name == ind_name].iloc[0].ind_code
             classify_data.append([code, ind_code, ind_name])
+    # 添加退市或暂停交易个股的行业分类数据
+    delisted_data_path = os.path.join(cfg.get('factor_db', 'db_path'), cfg.get('industry_classify', 'classify_data_path'), 'delisted_classify_sw.csv')
+    with open(delisted_data_path, 'r', newline='') as f:
+        f.readline()
+        csv_reader = csv.reader(f, delimiter=',')
+        for row in csv_reader:
+            code = row[0]
+            listed_date = row[2]
+            delisted_date = row[3]
+            ind_code = row[7]
+            ind_name = row[8]
+            if delisted_date > Utils.datetimelike_to_str(date, dash=False) and listed_date <= Utils.datetimelike_to_str(date, dash=False):
+                classify_data.append([code, ind_code, ind_name])
     # 保存股票行业分类文件
-    classify_data_path = os.path.join(cfg.get('industry_classify', 'classify_data_path'), 'industry_classify_sw.csv')
-    with open(classify_data_path, 'w', newline='') as f:
-        csv_writer = csv.writer(f)
-        csv_writer.writerows(classify_data)
+    ind_files = ['industry_classify_sw.csv', 'industry_classify_sw_{}.csv'.format(Utils.datetimelike_to_str(date, dash=False))]
+    for file_name in ind_files:
+        classify_data_path = os.path.join(cfg.get('factor_db', 'db_path'), cfg.get('industry_classify', 'classify_data_path'), file_name)
+        with open(classify_data_path, 'w', newline='') as f:
+            csv_writer = csv.writer(f)
+            csv_writer.writerows(classify_data)
 
 
 if __name__ == '__main__':
-    download_sw_fyjr_classify()
-    load_industry_classify()
+    # download_sw_fyjr_classify()
+    trading_days_series = Utils.get_trading_days(start='2018-01-01', end='2018-01-09')
+    # for date in trading_days_series:
+    #     print('loading industry classify of {}.'.format(Utils.datetimelike_to_str(date, dash=True)))
+    #     load_industry_classify(date=date)
+
+    ind_classify_path = '/Volumes/DB/FactorDB/ElementaryFactor/industry_classify/industry_classify_sw.csv'
+    df_ind_classify = pd.read_csv(ind_classify_path, names=['id', 'ind_code', 'ind_name'], header=0)
+    delisted_classify_path = '/Volumes/DB/FactorDB/ElementaryFactor/industry_classify/delisted_classify_sw.csv'
+    df_delisted_classify = pd.read_csv(delisted_classify_path, header=0)
+    for date in trading_days_series:
+        print('loading industry classify of {}.'.format(Utils.datetimelike_to_str(date, dash=True)))
+        df_add = df_delisted_classify[(df_delisted_classify['delist_date'] > int(date.strftime('%Y%m%d'))) & (df_delisted_classify['list_date'] <= int(date.strftime('%Y%m%d')))]
+        if not df_add.empty:
+            df_dst_classify = df_ind_classify.append(df_add[['id', 'ind_code', 'ind_name']], ignore_index=True)
+        else:
+            df_dst_classify = df_ind_classify
+        dst_path = '/Volumes/DB/FactorDB/ElementaryFactor/industry_classify/industry_classify_sw_{}.csv'.format(Utils.datetimelike_to_str(date, dash=False))
+        df_dst_classify.rename(columns={'id': '证券名称', 'ind_code': '申万行业代码', 'ind_name': '申万行业名称'}, inplace=True)
+        df_dst_classify.to_csv(dst_path, index=False)
+
     # import requests
     # url = 'http://www.swsindex.com/downloadfiles.aspx?swindexcode=SwClass&type=530&columnid=8892'
     # resp = requests.get(url)

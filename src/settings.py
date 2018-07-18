@@ -10,6 +10,9 @@
 # 因子数据库根目录
 FACTOR_DB_PATH = '/Volumes/DB/FactorDB'
 
+# 并行计算时使用的核心数
+CONCURRENCY_KERNEL_NUM = 4
+
 
 if __name__ == '__main__':
     pass

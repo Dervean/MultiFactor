@@ -21,6 +21,7 @@ import datetime
 from multiprocessing import Pool, Manager
 import time
 import statsmodels.api as sm
+import src.settings as SETTINGS
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
@@ -144,7 +145,7 @@ class EGRLF(Factor):
             else:
                 # 采用多进程并行计算EGRLF因子值
                 q = Manager().Queue()   # 队列, 用于进程间通信, 存储每个进程计算的因子载荷
-                p = Pool(4)             # 进程池, 最多同时开启4个进程
+                p = Pool(SETTINGS.CONCURRENCY_KERNEL_NUM)             # 进程池, 最多同时开启4个进程
                 for _, stock_info in stock_basics.iterrows():
                     p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
                 p.close()
@@ -282,7 +283,7 @@ class EGRSF(Factor):
             else:
                 # 采用多进程并行计算EGRSF因子值
                 q = Manager().Queue()   # 队列, 用于进程间通信, 存储每个进程计算的因子载荷
-                p = Pool(4)             # 进程池, 最多同时开启4进程
+                p = Pool(SETTINGS.CONCURRENCY_KERNEL_NUM)             # 进程池, 最多同时开启4进程
                 for _, stock_info in stock_basics.iterrows():
                     p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
                 p.close()
@@ -506,7 +507,7 @@ class EGRO(Factor):
             else:
                 # 采用多进程并行计算EGRO因子值
                 q = Manager().Queue()   # 队列, 用于进程间通信, 存储每个进程计算的因子载荷
-                p = Pool(4)             # 进程池, 最多同时开启4个进程
+                p = Pool(SETTINGS.CONCURRENCY_KERNEL_NUM)             # 进程池, 最多同时开启4个进程
                 for _, stock_info in stock_basics.iterrows():
                     p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
                 p.close()
@@ -652,7 +653,7 @@ class SGRO(Factor):
             else:
                 # 采用多进程并行计算SGRO因子值
                 q = Manager().Queue()   # 队列, 用于进程间通信, 存储每个进程计算的因子载荷
-                p = Pool(4)             # 进程池, 最多同时开启4个进程
+                p = Pool(SETTINGS.CONCURRENCY_KERNEL_NUM)             # 进程池, 最多同时开启4个进程
                 for _, stock_info in stock_basics.iterrows():
                     p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
                 p.close()

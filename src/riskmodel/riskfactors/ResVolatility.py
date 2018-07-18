@@ -20,6 +20,8 @@ import os
 import datetime
 from multiprocessing import Pool, Manager
 import time
+import src.settings as SETTINGS
+
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
@@ -49,6 +51,9 @@ class DASTD(Factor):
         # 取得个股复权行情数据
         df_secu_quote = Utils.get_secu_daily_mkt(code, end=calc_date, ndays=risk_ct.DASTD_CT.trailing+1, fq=True)
         if df_secu_quote is None:
+            return None
+        # 如果行情数据长度小于trailing的一半（即126个交易日）,那么返回None
+        if len(df_secu_quote) < int(risk_ct.DASTD_CT.trailing/2):
             return None
         df_secu_quote.reset_index(drop=True, inplace=True)
         # 计算个股的日对数收益率序列及收益率均值
@@ -148,7 +153,7 @@ class DASTD(Factor):
             else:
                 # 采用多进程并行计算DASTD因子值
                 q = Manager().Queue()   # 队列, 用于进程间通信, 存储每个进程计算的因子载荷
-                p = Pool(4)             # 进程池, 最多同时开启4个进程
+                p = Pool(SETTINGS.CONCURRENCY_KERNEL_NUM)             # 进程池, 最多同时开启4个进程
                 for _, stock_info in stock_basics.iterrows():
                     p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
                 p.close()
@@ -339,7 +344,7 @@ class CMRA(Factor):
             else:
                 # 采用多进程并行计算CMRA因子值
                 q = Manager().Queue()   # 队列, 用于进程间通信, 存储每个进程计算的因子载荷
-                p = Pool(4)             # 进程池, 最多同时开启4个进程
+                p = Pool(SETTINGS.CONCURRENCY_KERNEL_NUM)             # 进程池, 最多同时开启4个进程
                 for _, stock_info in stock_basics.iterrows():
                     p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
                 p.close()
@@ -458,6 +463,7 @@ class ResVolatility(Factor):
 if __name__ == '__main__':
     pass
     # DASTD.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
+    DASTD.calc_secu_factor_loading(code='601375', calc_date='2017-01-03')
     # CMRA.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
     # CMRA.calc_secu_factor_loading(code='601360', calc_date='2017-12-29')
-    ResVolatility.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)
+    ResVolatility.calc_factor_loading(start_date='2017-01-03', end_date=None, month_end=False, save=True, multi_proc=False)

@@ -15,7 +15,7 @@ import numpy as np
 import os
 import logging
 
-logging.basicConfig(level=logging.INFO,
+logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 class Factor(object):
@@ -128,7 +128,7 @@ class Factor(object):
                 com_factor.calc_factor_loading(start_date=calc_date, end_date=None, month_end=month_end, save=save, multi_proc=kwargs['multi_proc'])
             # 计算合成因子
             synthetic_factor = pd.DataFrame()
-            df_industry_classify = Utils.get_industry_classify()    # 个股行业分类数据
+            df_industry_classify = Utils.get_industry_classify(calc_date)    # 个股行业分类数据
             for com_factor in eval('risk_ct.' + cls.__name__.upper() + '_CT')['component']:
                 factor_path = os.path.join(factor_ct.FACTOR_DB.db_path, eval('risk_ct.' + com_factor + '_CT')['db_file'])
                 factor_loading = Utils.read_factor_loading(factor_path, Utils.datetimelike_to_str(calc_date, dash=False))
@@ -186,7 +186,7 @@ class Factor(object):
         str_date = Utils.to_date(date).strftime('%Y%m%d')
         # 1. 行业因子
         # 1.1. 读取行业分类信息
-        df_industry_calssify = Utils.get_industry_classify()
+        df_industry_calssify = Utils.get_industry_classify(str_date)
         df_industry_calssify = df_industry_calssify.set_index('id')
         # 1.2. 构建行业分裂哑变量
         df_industry_dummies = pd.get_dummies(df_industry_calssify['ind_code'])

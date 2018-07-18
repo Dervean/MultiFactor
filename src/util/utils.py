@@ -43,7 +43,7 @@ class Utils(object):
     _DataCache = Cache(500)    # 数据缓存
 
     @classmethod
-    def get_stock_basics(cls, date=None, remove_st=False, remove_suspension=False):
+    def get_stock_basics(cls, date=None, remove_st=False, remove_suspension=False, all=False):
         """
         读取上市交易个股列表信息
         Parameters:
@@ -55,17 +55,24 @@ class Utils(object):
             是否剔除st个股, 默认为False, 即不剔除
         :param remove_suspension: bool
             是否剔除停牌个股, 默认为False, 即不剔除
+        :param all: bool
+            是否返回全部个股代码, 包括已退市个股, 默认为False
+            如果为True, 那么其他参数失效
         :return: pd.DataFrame
         --------
-            0. symbol: 个股代码
+            0. symbol: 个股代码, e.g: SH600000
             1. name: 个股简称
-            2. listed_date: 上市日期
+            2. list_date: 上市日期
+            3. delist
         """
         if date is None:
             date = datetime.date.today()
         date = cls.datetimelike_to_str(date, dash=False)
 
         df_stock_basics = pd.read_csv(os.path.join(ct.DB_PATH, ct.BASIC_INFO_PATH, 'stock_basics.csv'), dtype={'list_date': str, 'delist_date': str})
+        if all:
+            df_stock_basics.reset_index(drop=True, inplace=True)
+            return df_stock_basics
         df_stock_basics = df_stock_basics[(df_stock_basics['list_date'] <= date) & (df_stock_basics['delist_date'] > date)]
         if remove_st:
             st_stocks = cls.get_st_stocks(date)
@@ -1404,7 +1411,7 @@ def _port_data_to_wind(port_data_file, wind_data_file, df_port_nav):
 
 if __name__ == '__main__':
     # test calc_interval_ret
-    ret = Utils.calc_interval_ret('603329', start='2017-12-29', end='2017-12-29')
+    # ret = Utils.calc_interval_ret('603329', start='2017-12-29', end='2017-12-29')
     # print('ret = %0.4f' % ret)
     # test get_trading_days
     # trading_days = Utils.get_trading_days(start=datetime.datetime.strptime('2017-01-01', '%Y-%m-%d'), end='20171031', ndays=10)
@@ -1428,11 +1435,12 @@ if __name__ == '__main__':
     # print(df.head())
     # secu_ind_dist = Utils.get_ind_dist('600000')
     # print(secu_ind_dist)
-    ipo_info = Utils.get_ipo_info('603329')
-    print(ipo_info)
+    # ipo_info = Utils.get_ipo_info('603329')
+    # print(ipo_info)
     # st_stocks = Utils.get_st_stocks()
     # print(st_stocks)
-    stock_basics = Utils.get_stock_basics(date='2017-12-29', remove_st=True, remove_suspension=True)
-    print(stock_basics.head(100))
+    # stock_basics = Utils.get_stock_basics(date='2017-12-29', remove_st=True, remove_suspension=True)
+    # print(stock_basics.head(100))
     # print(_code_to_symbol('000300.sH'))
-
+    df_ind_classify = Utils.get_industry_classify('2009-12-31')
+    print(df_ind_classify.head())

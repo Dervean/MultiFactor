@@ -26,25 +26,31 @@ def load_ipo_info():
     ipo_info_url = cfg.get('ipo_info', 'ipo_info_url')
     db_path = Path(cfg.get('factor_db', 'db_path'), cfg.get('ipo_info', 'db_path'))
     # 读取所有已上市个股代码
-    data_api = DataApi(addr='tcp://data.tushare.org:8910')
-    data_api.login('13811931480', 'eyJhbGciOiJIUzI1NiJ9.eyJjcmVhdGVfdGltZSI6IjE1MTI4Nzk0NTI2MjkiLCJpc3MiOiJhdXRoMCIsImlkIjoiMTM4MTE5MzE0ODAifQ.I0SXsA1bK--fbGu0B5Is2xdKOjALAeWBJRX6GdVmUL8')
-    df_stock_basics, msg = data_api.query(view='jz.instrumentInfo',
-                                          fields='status,list_date,name,market',
-                                          filter='inst_type=1&status=&market=SH,SZ&symbol=',
-                                          data_format='pandas')
-    if msg != '0,':
-        print('读取市场个股代码失败。')
-        return
-    df_stock_basics.symbol = df_stock_basics.symbol.map(lambda x: x.split('.')[0])
+    # data_api = DataApi(addr='tcp://data.tushare.org:8910')
+    # data_api.login('13811931480', 'eyJhbGciOiJIUzI1NiJ9.eyJjcmVhdGVfdGltZSI6IjE1MTI4Nzk0NTI2MjkiLCJpc3MiOiJhdXRoMCIsImlkIjoiMTM4MTE5MzE0ODAifQ.I0SXsA1bK--fbGu0B5Is2xdKOjALAeWBJRX6GdVmUL8')
+    # df_stock_basics, msg = data_api.query(view='jz.instrumentInfo',
+    #                                       fields='status,list_date,name,market',
+    #                                       filter='inst_type=1&status=&market=SH,SZ&symbol=',
+    #                                       data_format='pandas')
+    # if msg != '0,':
+    #     print('读取市场个股代码失败。')
+    #     return
+    # df_stock_basics.symbol = df_stock_basics.symbol.map(lambda x: x.split('.')[0])
+
+    df_stock_basics = Utils.get_stock_basics(all=True)
     # 遍历个股, 下载ipo信息数据
     df_ipo_info = DataFrame()
     for _, stock_info in df_stock_basics.iterrows():
+        # 如果个股ipo数据已存在, 则跳过
+        if db_path.joinpath('%s.csv' % stock_info.symbol).exists():
+            continue
+
         print('下载%s的IPO数据.' % stock_info.symbol)
         ipo_info_header = []
         ipo_info_data = []
 
         secu_code = Utils.code_to_symbol(stock_info.symbol)
-        url = ipo_info_url % stock_info.symbol
+        url = ipo_info_url % stock_info.symbol[2:]
         html = requests.get(url).content
         soup = BeautifulSoup(html, 'html.parser')
         tags = soup.find_all(name='h2')
@@ -62,7 +68,8 @@ def load_ipo_info():
                 ipo_info.to_csv(db_path.joinpath('%s.csv' % secu_code))
                 df_ipo_info = df_ipo_info.append(ipo_info, ignore_index=True)
                 break
-    df_ipo_info.to_csv(db_path.joinpath('ipo_info.csv'), index=False)
+    if not df_ipo_info.empty:
+        df_ipo_info.to_csv(db_path.joinpath('ipo_info.csv'), index=False, mode='a', header=False)
 
 
 if __name__ == '__main__':
