@@ -131,14 +131,20 @@ MLEV_CT = DottableDict({'db_file': 'RiskFactor/Leverage/MLEV/MLEV',
                         'listed_days': 0})
 DTOA_CT = DottableDict({'db_file': 'RiskFactor/Leverage/DTOA/DTOA',
                         'listed_days': 0})
-BLEV_CT =DottableDict({'db_file': 'RiskFactor/Leverage/BLEV/BLEV',
+BLEV_CT = DottableDict({'db_file': 'RiskFactor/Leverage/BLEV/BLEV',
                        'listed_days': 0})
 LEVERAGE_CT = DottableDict({'db_file': 'RiskFactor/Leverage/Leverage',
                             'component': ['MLEV', 'DTOA', 'BLEV'],
                             'weight': {'MLEV': 0.38, 'DTOA': 0.35, 'BLEV': 0.27}})
 
-# 风险因子列表
-RISK_FACTORS = ['Size', 'Beta', 'Momentum', 'ResVolatility', 'NonlinearSize', 'Value', 'Liquidity', 'EarningsYield', 'Growth', 'Leverage']
+# 风险模型风格因子列表
+STYLE_RISK_FACTORS = ['Size', 'Beta', 'Momentum', 'ResVolatility', 'NonlinearSize', 'Value', 'Liquidity',
+                      'EarningsYield', 'Growth', 'Leverage']
+# 风险模型行业因子列表
+INDUSTRY_FACTORS = ['sw_cj', 'sw_cm', 'sw_dqsb', 'sw_dz', 'sw_fdc', 'sw_fzfz', 'sw_zq', 'sw_bx', 'sw_dyjr', 'sw_gt',
+                    'sw_gysy', 'sw_gfjg', 'sw_hg', 'sw_jxsb', 'sw_jsj', 'sw_jydq', 'sw_jzcl', 'sw_jzzs', 'sw_jtys',
+                    'sw_nlmy', 'sw_qc', 'sw_qgzz', 'sw_symy', 'sw_spyl', 'sw_tx', 'sw_xxfw', 'sw_yysw', 'sw_yh',
+                    'sw_ysjs', 'sw_zh']
 
 
 if __name__ == '__main__':

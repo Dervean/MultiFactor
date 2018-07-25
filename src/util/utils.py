@@ -12,6 +12,7 @@ from pandas import Series
 from pandas import DataFrame
 import csv
 import datetime
+import calendar
 import shelve
 from enum import Enum, auto
 from src.util import cons as ct
@@ -63,7 +64,10 @@ class Utils(object):
             0. symbol: 个股代码, e.g: SH600000
             1. name: 个股简称
             2. list_date: 上市日期
-            3. delist
+            3. delist_date: 退市日期, 未退市的该值等于99999999
+            4. status: 状态, 1=正常交易, 3=已退市
+            5. market: 交易市场, SH=上交所, SZ=深交所
+            6. currency: 报价货币
         """
         if date is None:
             date = datetime.date.today()
@@ -294,6 +298,25 @@ class Utils(object):
             return trading_days.iloc[-(ndays+1)]
         else:
             return trading_days.iloc[-ndays]
+
+    @classmethod
+    def get_next_n_day(cls, start, ndays=1):
+        """
+        取得起始日期后的第几个交易日
+        Parameters:
+        --------
+        :param start: datetime-like, str
+            起始日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :param ndays: int
+            第几天
+        :return: pandas.Timestamp
+        """
+        start = cls.to_date(start)
+        trading_days = cls.get_trading_days(start=start)
+        if trading_days.iloc[0] == start:
+            return trading_days.iloc[ndays]
+        else:
+            return trading_days.iloc[(ndays-1)]
 
     @classmethod
     def is_month_end(cls, trading_day):
@@ -777,7 +800,8 @@ class Utils(object):
         if latest_ttm_data is None:
             return None
         # 读取N年前的ttm主要财务数据
-        prevN_date = datetime.datetime(date.year-years, date.month, date.day)
+        firstDayWeekDay, monthRange = calendar.monthrange(date.year-years, date.month)
+        prevN_date = datetime.datetime(date.year-years, date.month, monthRange)
         prevN_ttm_data = cls.get_ttm_fin_basic_data(code, prevN_date)
         if prevN_ttm_data is None:
             return None
@@ -1410,6 +1434,7 @@ def _port_data_to_wind(port_data_file, wind_data_file, df_port_nav):
 
 
 if __name__ == '__main__':
+    pass
     # test calc_interval_ret
     # ret = Utils.calc_interval_ret('603329', start='2017-12-29', end='2017-12-29')
     # print('ret = %0.4f' % ret)
@@ -1442,5 +1467,22 @@ if __name__ == '__main__':
     # stock_basics = Utils.get_stock_basics(date='2017-12-29', remove_st=True, remove_suspension=True)
     # print(stock_basics.head(100))
     # print(_code_to_symbol('000300.sH'))
-    df_ind_classify = Utils.get_industry_classify('2009-12-31')
-    print(df_ind_classify.head())
+    # df_ind_classify = Utils.get_industry_classify('2009-12-31')
+    # print(df_ind_classify.head())
+
+
+    # 检查缺失的个股行情
+    # df_dlisted_stocks = Utils.get_stock_basics('2015-01-05', all=True)
+    # df_dlisted_stocks = df_dlisted_stocks[df_dlisted_stocks['status'] == 3]
+    # for _, stock in df_dlisted_stocks.iterrows():
+    #     mkt_path = os.path.join('/Volumes/DB/Data/Stk_DAY_FQ/Stk_DAY_FQ_WithHS_20171222/{}.csv'.format(stock['symbol']))
+    #     if os.path.isfile(mkt_path):
+    #         print('{} mkt data exists.'.format(stock['symbol']))
+    #     else:
+    #         print('\033[1;31;40m{} {} mkt data does not exists.\033[0m'.format(stock['symbol'], stock['name']))
+
+    # 个股每日收益率文件重命名
+    # ret_path = '/Volumes/DB/FactorDB/riskmodel/dailyret'
+    # for factorret_file_name in os.listdir(ret_path):
+    #     if os.path.splitext(factorret_file_name)[1] == '.csv':
+    #         os.rename(os.path.join(ret_path, factorret_file_name), os.path.join(ret_path, 'dailyret_'+factorret_file_name))

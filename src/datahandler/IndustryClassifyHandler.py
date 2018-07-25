@@ -85,29 +85,48 @@ def load_industry_classify(standard='sw', date=datetime.date.today()):
         with open(classify_data_path, 'w', newline='') as f:
             csv_writer = csv.writer(f)
             csv_writer.writerows(classify_data)
+    # 检查退市股票行业分类数据中是否已包含所有的已退市股票
+    _check_dlisted_indclassify()
+
+
+def _check_dlisted_indclassify():
+    """检查退市股票行业代码分类"""
+    # 读取退市股票行业分类数据
+    cfg = ConfigParser()
+    cfg.read('config.ini')
+    delisted_data_path = os.path.join(cfg.get('factor_db', 'db_path'), cfg.get('industry_classify', 'classify_data_path'), 'delisted_classify_sw.csv')
+    df_delisted_indclassify = pd.read_csv(delisted_data_path, header=0)
+    # 读取已退市个股基本信息数据
+    df_stock_basics = Utils.get_stock_basics(all=True)
+    df_delisted_basics = df_stock_basics[df_stock_basics['status'] == 3]
+    # 检查退市股票行业分类数据中是否已包含所有的已退市股票
+    df_delisted_basics = df_delisted_basics[~df_delisted_basics['symbol'].isin(df_delisted_indclassify['id'].tolist())]
+    if ~df_delisted_basics.empty:
+        print('\033[1;31;40m个股{}已退市, 需加入退市股票行业分类数据中.\033[0m'.format(str(df_delisted_basics['symbol'].tolist())))
 
 
 if __name__ == '__main__':
+    _check_dlisted_indclassify()
     # download_sw_fyjr_classify()
-    trading_days_series = Utils.get_trading_days(start='2018-01-01', end='2018-01-09')
+    # trading_days_series = Utils.get_trading_days(start='2018-01-01', end='2018-01-09')
+    # # for date in trading_days_series:
+    # #     print('loading industry classify of {}.'.format(Utils.datetimelike_to_str(date, dash=True)))
+    # #     load_industry_classify(date=date)
+    #
+    # ind_classify_path = '/Volumes/DB/FactorDB/ElementaryFactor/industry_classify/industry_classify_sw.csv'
+    # df_ind_classify = pd.read_csv(ind_classify_path, names=['id', 'ind_code', 'ind_name'], header=0)
+    # delisted_classify_path = '/Volumes/DB/FactorDB/ElementaryFactor/industry_classify/delisted_classify_sw.csv'
+    # df_delisted_classify = pd.read_csv(delisted_classify_path, header=0)
     # for date in trading_days_series:
     #     print('loading industry classify of {}.'.format(Utils.datetimelike_to_str(date, dash=True)))
-    #     load_industry_classify(date=date)
-
-    ind_classify_path = '/Volumes/DB/FactorDB/ElementaryFactor/industry_classify/industry_classify_sw.csv'
-    df_ind_classify = pd.read_csv(ind_classify_path, names=['id', 'ind_code', 'ind_name'], header=0)
-    delisted_classify_path = '/Volumes/DB/FactorDB/ElementaryFactor/industry_classify/delisted_classify_sw.csv'
-    df_delisted_classify = pd.read_csv(delisted_classify_path, header=0)
-    for date in trading_days_series:
-        print('loading industry classify of {}.'.format(Utils.datetimelike_to_str(date, dash=True)))
-        df_add = df_delisted_classify[(df_delisted_classify['delist_date'] > int(date.strftime('%Y%m%d'))) & (df_delisted_classify['list_date'] <= int(date.strftime('%Y%m%d')))]
-        if not df_add.empty:
-            df_dst_classify = df_ind_classify.append(df_add[['id', 'ind_code', 'ind_name']], ignore_index=True)
-        else:
-            df_dst_classify = df_ind_classify
-        dst_path = '/Volumes/DB/FactorDB/ElementaryFactor/industry_classify/industry_classify_sw_{}.csv'.format(Utils.datetimelike_to_str(date, dash=False))
-        df_dst_classify.rename(columns={'id': '证券名称', 'ind_code': '申万行业代码', 'ind_name': '申万行业名称'}, inplace=True)
-        df_dst_classify.to_csv(dst_path, index=False)
+    #     df_add = df_delisted_classify[(df_delisted_classify['delist_date'] > int(date.strftime('%Y%m%d'))) & (df_delisted_classify['list_date'] <= int(date.strftime('%Y%m%d')))]
+    #     if not df_add.empty:
+    #         df_dst_classify = df_ind_classify.append(df_add[['id', 'ind_code', 'ind_name']], ignore_index=True)
+    #     else:
+    #         df_dst_classify = df_ind_classify
+    #     dst_path = '/Volumes/DB/FactorDB/ElementaryFactor/industry_classify/industry_classify_sw_{}.csv'.format(Utils.datetimelike_to_str(date, dash=False))
+    #     df_dst_classify.rename(columns={'id': '证券名称', 'ind_code': '申万行业代码', 'ind_name': '申万行业名称'}, inplace=True)
+    #     df_dst_classify.to_csv(dst_path, index=False)
 
     # import requests
     # url = 'http://www.swsindex.com/downloadfiles.aspx?swindexcode=SwClass&type=530&columnid=8892'

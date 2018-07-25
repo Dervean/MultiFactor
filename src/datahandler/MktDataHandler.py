@@ -100,11 +100,11 @@ def _write_1min_FQ_data(mkt_file_path, db_path):
                 if str_date != pre_strDate and len(pre_strDate) > 0:
                     if os.path.exists(os.path.join(db_path, pre_strDate)) == False:
                         os.mkdir(os.path.join(db_path, pre_strDate))
-                    if pre_strDate > '2016-10-31':
-                        with open(os.path.join(db_path, pre_strDate, dst_file_name), 'w', newline='') as dst_file:
-                            dst_file.write(str_header)
-                            csv_writer = csv.writer(dst_file)
-                            csv_writer.writerows(dst_rows)
+                    # if pre_strDate > '2016-10-31':
+                    with open(os.path.join(db_path, pre_strDate, dst_file_name), 'w', newline='') as dst_file:
+                        dst_file.write(str_header)
+                        csv_writer = csv.writer(dst_file)
+                        csv_writer.writerows(dst_rows)
                     dst_rows = []
                     pre_strDate = str_date
                 dst_rows.append(row)
@@ -286,8 +286,9 @@ def calc_suspension_info(date):
     df_stock_basics.to_csv(suspension_info_path, index=False, encoding='utf-8')
 
 if __name__ == '__main__':
-    # load_mkt_1min('20180109', 'D')
+    pass
+    # load_mkt_1min('2007', 'Y')
 
     # load_mkt_daily(is_one_day=True, str_date='2018-01-12', is_index_data=False)
 
-    calc_suspension_info('2018-01-12')
+    # calc_suspension_info('2015-01-05')

@@ -45,7 +45,9 @@ def load_stock_basics(date=None):
     # # stock_basics = stock_basics.append(pd.Series(['SH601313', '江南嘉捷', 20120116], index=['symbol', 'name', 'listed_date']), ignore_index=True)
 
     stock_basics = CDataHandler.DataApi.get_secu_basics()
-
+    if stock_basics is None:
+        print('\033[1;31;40m下载个股基本信息失败.\033[0m')
+        return
     Erratas = {'SH601313': {'delist_date': 20180226, 'status': 3},
                'SH601360': {'list_date': 20180228}}   # 勘误表
     for code, errata_info in Erratas.items():
@@ -70,6 +72,9 @@ def load_st_info():
     st_start_types = cfg.get('st_info', 'st_start_types').split(',')
     st_end_types = cfg.get('st_info', 'st_end_types').split(',')
 
+    if not os.path.isfile(os.path.join(raw_data_path, 'st_info.csv')):
+        print('\033[1;31;40mst_info.csv原始文件不存在.\033[0m')
+        return
     df_st_rawinfo = pd.read_csv(os.path.join(raw_data_path, 'st_info.csv'), header=0)
     df_st_rawinfo = df_st_rawinfo[(df_st_rawinfo['st_info'] != '0') & (~df_st_rawinfo['st_info'].isna())]
     df_st_info = pd.DataFrame(columns=['code', 'st_start', 'st_end'])
@@ -106,6 +111,9 @@ def load_calendar():
     calendar_path = os.path.join(cfg.get('factor_db', 'db_path'), cfg.get('calendar', 'calendar_path'), 'trading_days.csv')
 
     calendar_resp = requests.get(calendar_url)
+    if calendar_resp.status_code != requests.codes.ok:
+        print('\033[1;31;40m下载交易日历失败.\033[0m')
+        return
     calendar_data = pd.Series(calendar_resp.text.split('\n')[1:-1], name='trading_day')
     calendar_data.to_csv(calendar_path, index=False, header=True)
 

@@ -13,12 +13,15 @@ import src.datahandler.IndustryClassifyHandler as ind_cls
 import src.datahandler.IPOInfoHandler as ipo_info
 
 if __name__ == '__main__':
-    str_date = '2018-07-13'
+    str_date = '2018-07-25'
     print(str_date)
     # 导入个股基本信息相关数据
-    # st_basics.load_stock_basics()
-    # st_basics.load_st_info()
-    # st_basics.load_calendar()
+    print('导入个股基本信息数据...')
+    st_basics.load_stock_basics()
+    print('导入个股st信息数据...')
+    st_basics.load_st_info()
+    print('导入交易日历数据...')
+    st_basics.load_calendar()
     # 导入复权分钟数据
     print('导入复权分钟行情数据...')
     mkt.load_mkt_1min(str_date.replace('-', ''), 'D')

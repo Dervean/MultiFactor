@@ -195,7 +195,7 @@ class CETOP(Factor):
         if ttm_fin_data is None:
             return None
         ttm_cash = ttm_fin_data['NetOperateCashFlow']
-        if np.isnan(ttm_cash):
+        if pd.isnull(ttm_cash):
             return None
         # 读取个股市值
         lncap_path = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.LNCAP_CT.db_file)
@@ -335,7 +335,7 @@ class ETOP(Factor):
         if ttm_fin_data is None:
             return None
         ttm_netprofit = ttm_fin_data['NetProfit']
-        if np.isnan(ttm_netprofit):
+        if pd.isnull(ttm_netprofit):
             return None
         # 读取个股市值
         lncap_path = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.LNCAP_CT.db_file)
@@ -530,6 +530,7 @@ class EarningsYield(Factor):
 if __name__ == '__main__':
     pass
     # EPFWD.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
-    # CETOP.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
+    # CETOP.calc_factor_loading(start_date='2015-01-05', end_date=None, month_end=False, save=False, multi_proc=False)
+    CETOP.calc_secu_factor_loading(code='300375', calc_date='2015-01-05')
     # ETOP.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
-    EarningsYield.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)
+    # EarningsYield.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)

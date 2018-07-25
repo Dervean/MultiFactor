@@ -802,8 +802,9 @@ class Growth(Factor):
 if __name__ == '__main__':
     # pass
     # EGRLF.calc_factor_loading(start_date='2009-12-31', end_date=None, month_end=False, save=True, multi_proc=True)
-    # EGRLF.calc_secu_factor_loading('000156', '2009-12-31')
+    # EGRLF.calc_secu_factor_loading('600021', '2016-02-29')
     # EGRSF.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
+    EGRSF.calc_secu_factor_loading('600021', '2016-02-29')
     # EGRO.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
     # EGRO.calc_secu_factor_loading('SZ300591', '2017-12-29')
     # SGRO.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)

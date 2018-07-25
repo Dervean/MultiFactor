@@ -10,6 +10,7 @@
 from configparser import ConfigParser
 import os
 import pandas as pd
+from src.util.utils import Utils
 
 
 def load_predictedearning_data(date=None):
@@ -105,4 +106,36 @@ def load_predictedgrowth_data(date=None):
 if __name__ == '__main__':
     # pass
     # load_predictedearning_data(2017)
-    load_predictedgrowth_data(2017)
+    # load_predictedgrowth_data(2014)
+
+    # ----------填充predicted earnings数据-----------------
+    # start_date = '2010-12-31'
+    # end_date = '2016-12-31'
+    # trading_days_series = Utils.get_trading_days(start_date, end_date)
+    # predictedearning_data_path = '/Volumes/DB/FactorDB/ElementaryFactor/consensus_data/predicted_earnings'
+    # df_predictedearning = pd.DataFrame()
+    # for trading_day in trading_days_series:
+    #     file_path = os.path.join(predictedearning_data_path, 'predictedearnings_{}.csv'.format(Utils.datetimelike_to_str(trading_day, dash=False)))
+    #     if os.path.isfile(file_path):
+    #         df_predictedearning = pd.read_csv(file_path, header=0)
+    #     else:
+    #         if not df_predictedearning.empty:
+    #             print('save predicted earning data of {}.'.format(Utils.datetimelike_to_str(trading_day, dash=True)))
+    #             df_predictedearning.to_csv(file_path, index=False)
+    # ---------------------------------------------------
+
+    # ----------填充predicted growth数据-----------------
+    start_date = '2013-12-31'
+    end_date = '2014-12-31'
+    trading_days_series = Utils.get_trading_days(start_date, end_date)
+    predicted_growth_path = '/Volumes/DB/FactorDB/ElementaryFactor/consensus_data/growth_data'
+    df_predictedgrowth = pd.DataFrame()
+    for trading_day in trading_days_series:
+        file_path = os.path.join(predicted_growth_path, 'consensus_growth_data_{}.csv'.format(Utils.datetimelike_to_str(trading_day, dash=False)))
+        if os.path.isfile(file_path):
+            df_predictedgrowth = pd.read_csv(file_path, header=0)
+        else:
+            if not df_predictedgrowth.empty:
+                print('save predicted growth data of {}.'.format(Utils.datetimelike_to_str(trading_day, dash=True)))
+                df_predictedgrowth.to_csv(file_path, index=False)
+    # ---------------------------------------------------
