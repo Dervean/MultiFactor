@@ -106,7 +106,7 @@ def load_predictedgrowth_data(date=None):
 if __name__ == '__main__':
     # pass
     # load_predictedearning_data(2017)
-    # load_predictedgrowth_data(2014)
+    load_predictedgrowth_data(2013)
 
     # ----------填充predicted earnings数据-----------------
     # start_date = '2010-12-31'
@@ -125,8 +125,8 @@ if __name__ == '__main__':
     # ---------------------------------------------------
 
     # ----------填充predicted growth数据-----------------
-    start_date = '2013-12-31'
-    end_date = '2014-12-31'
+    start_date = '2012-12-31'
+    end_date = '2013-12-31'
     trading_days_series = Utils.get_trading_days(start_date, end_date)
     predicted_growth_path = '/Volumes/DB/FactorDB/ElementaryFactor/consensus_data/growth_data'
     df_predictedgrowth = pd.DataFrame()

@@ -26,6 +26,7 @@ import src.riskmodel.riskfactors.cons as riskfactor_ct
 import os
 import logging
 import cvxpy as cvx
+from src.util.algo import Algo
 
 
 logging.basicConfig(level=logging.INFO,
@@ -421,6 +422,37 @@ class Barra(object):
         else:
             return df_StyleFactorloading
 
+    def _naive_factor_covmat(self, date):
+        """
+        计算风险模型因子朴素协方差矩阵, 采用EWMA算法计算
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            计算日期
+        :return: tuple(str, np.array)
+        --------
+            返回一个元组, 第一个元素是因子名称, 第二个是因子朴素协方差矩阵
+        """
+        # 读取风险因子报酬序列数据
+        ewma_param = riskmodel_ct.FACTOR_COVMAT_PARAMS['EWMA']
+        date = Utils.to_date(date)
+        df_factor_ret = self._get_factor_ret(end=date, ndays=ewma_param['trailing'])
+        arr_factor_ret = np.array(df_factor_ret)
+
+        # 采用协方差参数计算因子协方差矩阵
+        cov_weight = Algo.ewma_weight(ewma_param['trailing'], ewma_param['cov_half_life'])
+        cov_mat = np.cov(arr_factor_ret, rowvar=False, bias=True, aweights=cov_weight)
+
+        # 采用方差参数计算因子方差向量, 并替换协方差矩阵的对角线数据
+        vol_weight = Algo.ewma_weight(ewma_param['trailing'], ewma_param['vol_half_life'])
+        avg = np.average(arr_factor_ret, axis=0, weights=vol_weight)
+        X = arr_factor_ret - avg[None, :]
+        arr_vol = np.sum(vol_weight[:, None] * X ** 2, axis=0)
+        for k in np.arange(len(arr_vol)):
+            cov_mat[k, k] = arr_vol[k]
+
+        return df_factor_ret.columns.tolist(), cov_mat
+
 
 if __name__ == '__main__':
     BarraModel = Barra()
@@ -432,4 +464,5 @@ if __name__ == '__main__':
     # print(BarraModel._get_IndFactorloading_matrix('2017-12-29').head())
     # print(BarraModel._get_StyleFactorloading_matrix('2017-12-29').head())
     # print(BarraModel._get_secu_dailyret('2018-01-02').head())
-    BarraModel.estimate_factor_ret(start_date='2017-12-29', end_date='2018-06-30')
+    # BarraModel.estimate_factor_ret(start_date='2015-01-05', end_date='2017-12-28')
+    print(BarraModel._naive_factor_covmat('2018-06-29'))

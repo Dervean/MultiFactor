@@ -27,7 +27,7 @@ class Algo(object):
         --------
             采用半衰指数平均算法计算的权重向量
         """
-        flambda = (0.5)**(1.0/tau)
+        flambda = 0.5**(1.0/tau)
         weight = flambda ** np.arange(h)[::-1]
         weight /= sum(weight)
         return weight
