@@ -27,6 +27,8 @@ import os
 import logging
 import cvxpy as cvx
 from src.util.algo import Algo
+import datetime
+import math
 
 
 logging.basicConfig(level=logging.INFO,
@@ -150,8 +152,103 @@ class Barra(object):
                 ser_factor_ret = pd.Series(factor_ret, index=['market'] + ind_factor_labels + style_factor_labels)
                 self._save_factor_ret(trading_day, ser_factor_ret, 'a')
                 # print(ser_factor_ret)
+
+                # 计算残差值
+                arr_daily_ret = np.asarray(df_estimator_matrix['ret']).reshape((len(df_estimator_matrix), 1))   # 个股下一交易日收益率序列
+
+                df_estimator_matrix.drop(columns=['weight', 'ret'], inplace=True)
+                df_estimator_matrix.insert(loc=0, column='market', value=np.ones(len(df_estimator_matrix)))
+                arr_factor_loading = np.asarray(df_estimator_matrix)    # 个股风险因子载荷矩阵
+
+                arr_factor_ret = np.asarray(ser_factor_ret).reshape((len(ser_factor_ret), 1))   # 风险因子报酬向量
+
+                arr_residual = np.around(arr_daily_ret - np.dot(arr_factor_loading, arr_factor_ret),8)
+
+                ser_residual = pd.Series(arr_residual.flatten(), index=df_estimator_matrix.index, name='residual')
+                # residual_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.RISKMODEL_RESIDUAL_PATH, 'residual_{}.csv'.format(Utils.datetimelike_to_str(trading_day, dash=False)))
+                # ser_residual.to_csv(residual_path, index=True, header=True, index_label='code')
+                self._save_residual_ret(trading_day, ser_residual, 'a')
+
             else:
                 logging.info('\033[1;31;40m{}优化计算风险因子报酬无解.\033[0m'.format(Utils.datetimelike_to_str(trading_day, dash=True)))
+
+    def calc_factor_covmat(self, start_date, end_date=None, calc_mode='cov'):
+        """
+        计算风险因子协方差矩阵
+        Parameters:
+        --------
+        :param start_date: datetime-like, str
+            开始日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :param end_date: datetime-like, str
+            结束日期, e.g: YYYY-MM-DD, YYYYMMDD, 默认为None
+        :param calc_mode: str
+            计算模式,
+            'cov'=计算因子朴素协方差矩阵和最终协方差矩阵, 并保存
+            'naive'=只计算因子朴素协方差矩阵, 并保存
+        :return:
+        """
+        # 读取交易日序列
+        start_date = Utils.to_date(start_date)
+        if end_date is None:
+            trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
+        else:
+            end_date = Utils.to_date(end_date)
+            trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
+
+        for calc_date in trading_days_series:
+            logging.info('Calc factor covmat of {}.'.format(Utils.datetimelike_to_str(calc_date, dash=True)))
+            # 计算风险因子朴素协方差矩阵, 并保存
+            factor_names, naive_covmat = self._naive_factor_covmat(calc_date)
+            self._save_factor_covmat(calc_date, naive_covmat, factor_names, 'naive')
+            # print('factor names:')
+            # print(factor_names)
+            # print('naive covmat :')
+            # print(naive_covmat)
+            if calc_mode == 'cov':
+                # 对风险因子朴素协方差矩阵进行Newey_West调整
+                nw_adj_covmat = self._covmat_NeweyWest_adj(naive_covmat, calc_date)
+                # print('Newey_West adjusted covmat:')
+                # print(nw_adj_covmat)
+                # 进行波动率偏误调整
+                lambda_F = self._vol_RegimeAdj_multiplier(calc_date)
+                riskfactor_covmat = lambda_F ** 2 * nw_adj_covmat
+                # 保存风险因子协方差矩阵
+                self._save_factor_covmat(calc_date, riskfactor_covmat, factor_names, 'cov')
+
+    def calc_spec_varmat(self, start_date, end_date=None, calc_mode='var'):
+        """
+        计算特质收益率方差矩阵
+        Parameters:
+        --------
+        :param start_date: datetime-like, str
+            开始日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :param end_date: datetime-like, str
+            结束日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :param calc_mode: str
+            计算模式
+            'var'=计算特质收益率朴素方差及最终特质收益率方差矩阵数据, 并保存
+            'naive'=只计算特质收益率朴素方差矩阵数据, 并保存
+        :return:
+        """
+        # 读取交易日序列
+        start_date = Utils.to_date(start_date)
+        if end_date is None:
+            trading_days_series = Utils.get_trading_days(end=start_date, ndasy=1)
+        else:
+            end_date = Utils.to_date(end_date)
+            trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
+
+        for calc_date in trading_days_series:
+            logging.info('Calc specific risk variance matrix of {}.'.format(Utils.datetimelike_to_str(calc_date, dash=True)))
+            # 计算特质收益率朴素方差数据, 并保存
+            naive_specvar = self._naive_spec_var(calc_date)
+            self._save_spec_var(calc_date, naive_specvar, 'naive')
+            if calc_mode == 'var':
+                # 对特质收益率朴素方差矩阵进行Newey_West调整
+                pass
+                # 进行波动率偏误调整
+
+                # 保存特质波动率矩阵数据
 
     def _save_factor_ret(self, date, data, save_type='a'):
         """
@@ -184,6 +281,39 @@ class Barra(object):
         elif save_type == 'w':
             data.to_csv(factor_ret_path, index=True)
 
+    def _save_residual_ret(self, date, data, save_type='a'):
+        """
+        保存个股风险模型中的残差收益率(特质收益率)数据
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :param data: pd.Series
+            个股残差收益率数据
+        :param save_type: str
+            保存方式, 'a'=新增, 'w'=覆盖, 默认为'a'
+        :return:
+        """
+        date = Utils.to_date(date)
+        residual_ret_path =os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.RISKMODEL_RESIDUAL_PATH)
+
+        data.name = date
+        if save_type == 'a':
+            df_residual_ret = self._get_residual_ret()
+            if df_residual_ret is None:
+                df_residual_ret = pd.DataFrame().append(data, ignore_index=True)
+                df_residual_ret.index = [date]
+                df_residual_ret.index.name = 'date'
+                df_residual_ret.to_csv(residual_ret_path)
+            else:
+                data.name = date
+                if date in df_residual_ret.index:
+                    df_residual_ret.drop(index=date, inplace=True)
+                df_residual_ret = df_residual_ret.append(data, ignore_index=False)
+                df_residual_ret.sort_index(inplace=True)
+                df_residual_ret.to_csv(residual_ret_path)
+        elif save_type == 'w':
+            data.to_csv(residual_ret_path, index=True)
 
     def _get_factor_ret(self, start=None, end=None, ndays=None):
         """
@@ -236,6 +366,59 @@ class Barra(object):
                 return df_factorret.loc[start:]
         else:
             return df_factorret
+
+    def _get_residual_ret(self, start=None, end=None, ndays=None):
+        """
+        读取风险模型的残差收益率数据
+        Parameters:
+        --------
+        :param start: datetime-like, str
+            开始日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :param end: datetime-like, str
+            结束日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :param ndays: int
+            天数
+        :return: pd.DataFrame
+        --------
+            返回风险模型的残差收益率数据
+
+            根据提供的参数不同, 返回不同数据:
+            1. start和end都不为None: 返回开始、结束日期区间内数据
+            2. start为None, end和ndays不为None: 返回截止结束日期(含)的前ndays天数据
+            3. end为None, start和ndays不为None: 返回自从开始日期(含)的后ndays天数据
+            4. start和ndays为None, end不为None: 返回截止结束日期(含)的所有数据
+            5. end和ndays为None, start不为None: 返回自从开始日期(含)开始的所有数据
+            6. start和end都为None, 返回所有数据
+        """
+        residual_ret_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.RISKMODEL_RESIDUAL_PATH)
+        if not os.path.isfile(residual_ret_path):
+            return None
+        df_residual_ret = pd.read_csv(residual_ret_path, header=0, index_col=0, parse_dates=[0])
+        if df_residual_ret.empty:
+            return None
+        if (start is not None) and (end is not None):
+            start = Utils.to_date(start)
+            end = Utils.to_date(end)
+            df_residual_ret = df_residual_ret[start: end]
+        elif end is not None:
+            end = Utils.to_date(end)
+            if ndays is not None:
+                df_residual_ret = df_residual_ret.loc[: end].tail(ndays)
+            else:
+                df_residual_ret = df_residual_ret.loc[: end]
+        elif start is not None:
+            start = Utils.to_date(start)
+            if ndays is not None:
+                df_residual_ret = df_residual_ret.loc[start:].head(ndays)
+            else:
+                df_residual_ret = df_residual_ret.loc[start:]
+        else:
+            return df_residual_ret
+
+        if df_residual_ret.empty:
+            return None
+        else:
+            return df_residual_ret
 
     def _calc_secu_dailyret(self, start_date, end_date=None):
         """
@@ -427,11 +610,11 @@ class Barra(object):
         计算风险模型因子朴素协方差矩阵, 采用EWMA算法计算
         Parameters:
         --------
-        :param date: datetime-like, str
-            计算日期
+        :param date: datetime-lie, str
+            计算日期, e.g: YYYY-MM-DD, YYYYMMDD
         :return: tuple(str, np.array)
         --------
-            返回一个元组, 第一个元素是因子名称, 第二个是因子朴素协方差矩阵
+            返回一个元组, 第一个元素是因子名称list, 第二个元素是因子朴素协方差矩阵
         """
         # 读取风险因子报酬序列数据
         ewma_param = riskmodel_ct.FACTOR_COVMAT_PARAMS['EWMA']
@@ -440,11 +623,11 @@ class Barra(object):
         arr_factor_ret = np.array(df_factor_ret)
 
         # 采用协方差参数计算因子协方差矩阵
-        cov_weight = Algo.ewma_weight(ewma_param['trailing'], ewma_param['cov_half_life'])
+        cov_weight = Algo.ewma_weight(len(arr_factor_ret), ewma_param['cov_half_life'])
         cov_mat = np.cov(arr_factor_ret, rowvar=False, bias=True, aweights=cov_weight)
 
         # 采用方差参数计算因子方差向量, 并替换协方差矩阵的对角线数据
-        vol_weight = Algo.ewma_weight(ewma_param['trailing'], ewma_param['vol_half_life'])
+        vol_weight = Algo.ewma_weight(len(arr_factor_ret), ewma_param['vol_half_life'])
         avg = np.average(arr_factor_ret, axis=0, weights=vol_weight)
         X = arr_factor_ret - avg[None, :]
         arr_vol = np.sum(vol_weight[:, None] * X ** 2, axis=0)
@@ -453,10 +636,232 @@ class Barra(object):
 
         return df_factor_ret.columns.tolist(), cov_mat
 
+    def _save_factor_covmat(self, date, cov_mat, factor_names, cov_type):
+        """
+        保存协方差矩阵数据
+        Parameters:
+        --------
+        :param date: datetime-like, str
+             日期, e.g: YYYY-MM-Dd, YYYYMMDD
+        :param cov_mat: np.array
+            风险因子协方差矩阵数据
+        :param factor_names: list of str
+            风险因子名称list, 协方差矩阵的header
+        :param cov_type: str
+            协方差矩阵类型, 'naive'=朴素协方差矩阵, 'cov'=最终协方差矩阵
+        :return:
+        """
+        date = Utils.to_date(date)
+        if cov_type == 'naive':
+            cov_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.FACTOR_NAIVE_COVMAT_PATH, 'cov_{}.csv'.format(Utils.datetimelike_to_str(date, dash=False)))
+        elif cov_type == 'cov':
+            cov_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.FACTOR_COVMAT_PATH, 'cov_{}.csv'.format(Utils.datetimelike_to_str(date, dash=False)))
+        else:
+            raise ValueError("协方差矩阵类型错误.")
+
+        df_covmat = pd.DataFrame(cov_mat, index=factor_names, columns=factor_names)
+        df_covmat.to_csv(cov_path, index_label='factor')
+
+    def _get_factor_covmat(self, cov_type, end, ndays=None):
+        """
+        读取风险因子协方差矩阵数据
+        Parameters:
+        --------
+        :param end: datetime-like, str
+            结束日期, e.g: YYYY-MM-DD, YYYYMMDD, 默认为None
+        :param ndays: int
+            天数, 默认为None
+        :param cov_type: str
+            协方差矩阵类型, 'naive'=朴素协方差矩阵, 'cov'=最终协方差矩阵
+        :return: dict{str, np.array}
+        --------
+            风险因子协方差因子矩阵数据时间序列, dict{'YYYYMMDD': cov_mat}
+        """
+        if cov_type == 'naive':
+            cov_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.FACTOR_NAIVE_COVMAT_PATH)
+        elif cov_type == 'cov':
+            cov_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.FACTOR_COVMAT_PATH)
+        else:
+            raise ValueError("协方差矩阵类型错误.")
+
+        end = Utils.to_date(end)
+        if ndays is None:
+            trading_days_series = Utils.get_trading_days(end=end, ndays=1)
+        else:
+            trading_days_series = Utils.get_trading_days(end=end, ndays=ndays)
+
+        factor_covmat = {}
+        for calc_date in trading_days_series:
+            covmat_path = os.path.join(cov_path, 'cov_{}.csv'.format(Utils.datetimelike_to_str(calc_date, dash=False)))
+            df_factor_covmat = pd.read_csv(covmat_path, header=0, index_col=0)
+            arr_factor_covmat = np.array(df_factor_covmat)
+            factor_covmat[Utils.datetimelike_to_str(calc_date, dash=False)] = arr_factor_covmat
+
+        if len(factor_covmat) == 0:
+            return None
+        else:
+            return factor_covmat
+
+
+    def _covmat_NeweyWest_adj(self, naive_covmat, date):
+        """
+        计算经newey_west调整后的风险因子协方差矩阵
+        Parameters:
+        --------
+        :param naive_covmat: np.array
+            风险因子朴素协方差矩阵,矩阵大小为: N×N
+        :param date: datetime-like, str
+            计算日期
+        :return: np.array
+        --------
+            newey_west调整后的协方差矩阵
+        """
+        # 读取风险因子报酬序列数据
+        nw_param = riskmodel_ct.FACTOR_COVMAT_PARAMS['Newey_West']
+        date = Utils.to_date(date)
+        df_factor_ret = self._get_factor_ret(end=date, ndays=nw_param['trailing'])
+        arr_factor_ret = np.array(df_factor_ret)
+
+        if naive_covmat.shape[0] != naive_covmat.shape[1]:
+            raise ValueError("风险因子朴素协方差矩阵(naive_covmat)行和列的长度不一致")
+        if naive_covmat.shape[0] != arr_factor_ret.shape[1]:
+            raise ValueError("风险因子朴素协方差矩阵(naive_covmat)的长度与风险因子报酬矩阵(arr_factor_ret)的列长度不一致")
+
+        m, n = arr_factor_ret.shape
+        covmat_NW_adj = np.zeros((n, n))
+        D = nw_param['cov_lags']
+        if D < 1:
+            raise ValueError("参数cov_lags必须大于0")
+        for delta in range(1, D+1):
+            weight = Algo.ewma_weight(len(arr_factor_ret) - delta, nw_param['cov_half_life'])
+
+            arr_factor_ret1 = arr_factor_ret[: -delta, :]
+            avg1 = np.average(arr_factor_ret1, axis=0, weights=weight)
+            arr_factor_ret1 = arr_factor_ret1 - avg1
+
+            arr_factor_ret2 = arr_factor_ret[delta: , :]
+            avg2 = np.average(arr_factor_ret2, axis=0, weights=weight)
+            arr_factor_ret2 = arr_factor_ret2 - avg2
+
+            # m, n = weight.shape
+            weight = np.reshape(weight, (len(weight), 1))
+            arr_factor_ret1 = arr_factor_ret1 * weight
+            cov1 = np.dot(arr_factor_ret1.T, arr_factor_ret2)
+            cov2 = np.dot(arr_factor_ret2.T, arr_factor_ret1)
+
+            alpha = 1.0 - delta / (1.0 + D)
+            covmat_NW_adj += alpha * (cov1 + cov2)
+
+        covmat_NW_adj = 21.0 * (naive_covmat + covmat_NW_adj)
+        return covmat_NW_adj
+
+    def _vol_RegimeAdj_multiplier(self, date):
+        """
+        计算波动率偏误乘数
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            计算日期
+        :return:
+        """
+        regime_adj_param = riskmodel_ct.FACTOR_COVMAT_PARAMS['Vol_Regime_Adj']
+        date = Utils.to_date(date)
+        # 读取风险因子报酬数据序列
+        df_factorret = self._get_factor_ret(end=date, ndays=regime_adj_param['trailing'])
+        if df_factorret.shape[0] != regime_adj_param['trailing']:
+            raise ValueError("风险因子报酬数据序列长度不等于%d." % regime_adj_param['trailing'])
+        if df_factorret.shape[1] != len(riskfactor_ct.STYLE_RISK_FACTORS) + len(riskfactor_ct.INDUSTRY_FACTORS) + 1:
+            raise ValueError("风险因子报酬数据序列的列数与风险因子数量不一致.")
+        arr_factorret = np.array(df_factorret)
+        # 读取风险因子朴素协方差矩阵数据序列, 并转换为风险因子方差序列数据
+        factor_covmat_series = self._get_factor_covmat(cov_type='naive', end=date-datetime.timedelta(days=1), ndays=regime_adj_param['trailing'])
+        arr_varmat = np.zeros(arr_factorret.shape)
+        k = 0
+        for str_date, cov_mat in factor_covmat_series.items():
+            n = len(cov_mat)
+            for i in range(n):
+                arr_varmat[k][i] = cov_mat[i][i]
+            k += 1
+        if arr_varmat.shape[0] != regime_adj_param['trailing']:
+            raise ValueError("风险因子方差序列长度不等于%d." % regime_adj_param['trailing'])
+        if arr_factorret.shape != arr_varmat.shape:
+            raise ValueError("风险因子报酬数据序列与风险因子方差序列的大小不一致.")
+        arr_factorret_square = arr_factorret ** 2
+        b_stat = arr_factorret_square / arr_varmat
+        b_stat = np.sum(b_stat, axis=1) / arr_factorret_square.shape[1]
+
+        weight = Algo.ewma_weight(regime_adj_param['trailing'], regime_adj_param['half_life'])
+        multiplier = np.sum(weight * b_stat)
+        return math.sqrt(multiplier)
+
+    def _naive_spec_var(self, date):
+        """
+        计算特质收益率朴素方差向量, 采用EWMA算法计算
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            计算日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :return: pd.Series
+        --------
+            返回个股特质收益率方差数据, pd.Series的index为个股代码
+        """
+        date = Utils.to_date(date)
+        # 读取个股基本信息数据
+        stock_basics = Utils.get_stock_basics(date)
+        # 读取截止date日期的个股特质收益率数据
+        ewma_param = riskmodel_ct.SPECIFICRISK_VARMAT_PARAMS['EWMA']
+        df_residual_ret = self._get_residual_ret(end=date)
+        # 遍历个股基本信息, 采用EWMA算法计算特质收益率方差
+        symbols = [symbol for symbol in stock_basics['symbol']]
+        df_residual_ret = df_residual_ret[symbols]
+        weight = Algo.ewma_weight(ewma_param['trailing'], ewma_param['half_life'])
+
+        ser_spec_var = pd.Series(name='spec_var')
+        for symbol in df_residual_ret.columns:
+            arr_residual_ret = np.asarray(df_residual_ret[symbol].dropna().tail(ewma_param['trailing']))
+            if len(arr_residual_ret) < ewma_param['tailing']/2:
+                continue
+            if len(arr_residual_ret) == ewma_param['trailing']:
+                avg = np.average(arr_residual_ret, weights=weight)
+                arr_residual_ret -= avg
+                naive_var = np.sum(weight * arr_residual_ret ** 2)
+            else:
+                w = Algo.ewma_weight(len(arr_residual_ret), ewma_param['half_life'])
+                avg = np.average(arr_residual_ret, weights=w)
+                arr_residual_ret -= avg
+                naive_var = np.sum(w * arr_residual_ret ** 2)
+            ser_spec_var[symbol] = naive_var
+
+        ser_spec_var.index.name = 'code'
+        return ser_spec_var
+
+    def _save_spec_var(self, date, spec_var, var_type):
+        """
+        保存个股特质收益率方差数据
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :param spec_var: pd.Series
+            个股特质收益率方差数据
+        :param var_type: str
+            方差数据类型, 'naive'=朴素方差数据, 'var'=最终特质收益率方差数据
+        :return:
+        """
+        date = Utils.to_date(date)
+        if var_type == 'naive':
+            var_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.SPECIFICRISK_NAIVE_VARMAT_PATH, 'specvar_{}.csv'.format(Utils.datetimelike_to_str(date, dash=False)))
+        elif var_type == 'var':
+            var_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.SPECIFICRISK_VARMAT_PATH, 'specvar_{}.csv'.format(Utils.datetimelike_to_str(date, dash=False)))
+        else:
+            raise ValueError("特质收益率方差类型错误.")
+
+        spec_var.to_csv(var_path, index=True, header=True)
+
 
 if __name__ == '__main__':
     BarraModel = Barra()
-    # BarraModel.calc_factorloading('2015-01-01', '2018-06-29')
+    # BarraModel.calc_factorloading('2014-01-01', '2014-12-31')
     # BarraModel._calc_secu_dailyret('2018-07-02')
     # BarraModel._get_cap_weight('2017-12-29')
     # BarraModel._calc_IndFactorloading('2017-12-29')
@@ -464,5 +869,7 @@ if __name__ == '__main__':
     # print(BarraModel._get_IndFactorloading_matrix('2017-12-29').head())
     # print(BarraModel._get_StyleFactorloading_matrix('2017-12-29').head())
     # print(BarraModel._get_secu_dailyret('2018-01-02').head())
-    # BarraModel.estimate_factor_ret(start_date='2015-01-05', end_date='2017-12-28')
-    print(BarraModel._naive_factor_covmat('2018-06-29'))
+
+    BarraModel.estimate_factor_ret(start_date='2014-01-11', end_date='2018-06-29')
+    # print(BarraModel._naive_factor_covmat('2018-06-29'))
+    # BarraModel.calc_factor_covmat(start_date='2017-02-01', end_date='2018-06-29', calc_mode='all')

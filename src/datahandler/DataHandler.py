@@ -13,7 +13,7 @@ import src.datahandler.IndustryClassifyHandler as ind_cls
 import src.datahandler.IPOInfoHandler as ipo_info
 
 if __name__ == '__main__':
-    str_date = '2018-07-26'
+    str_date = '2018-08-03'
     print(str_date)
     # 导入个股基本信息相关数据
     print('导入个股基本信息数据...')

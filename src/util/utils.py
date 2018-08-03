@@ -1484,5 +1484,5 @@ if __name__ == '__main__':
     # 个股每日收益率文件重命名
     # ret_path = '/Volumes/DB/FactorDB/riskmodel/dailyret'
     # for factorret_file_name in os.listdir(ret_path):
-    #     if os.path.splitext(factorret_file_name)[1] == '.csv':
+    #     if (factorret_file_name[:8] != 'dailyret') and (os.path.splitext(factorret_file_name)[1] == '.csv'):
     #         os.rename(os.path.join(ret_path, factorret_file_name), os.path.join(ret_path, 'dailyret_'+factorret_file_name))
