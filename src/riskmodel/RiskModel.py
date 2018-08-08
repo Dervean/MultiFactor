@@ -99,6 +99,7 @@ class Barra(object):
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
 
+        df_residual_rets = pd.DataFrame()
         for trading_day in trading_days_series:
             logging.info('Estimate risk factor return of {}.'.format(Utils.datetimelike_to_str(trading_day)))
             df_estimator_matrix = pd.DataFrame()
@@ -164,13 +165,17 @@ class Barra(object):
 
                 arr_residual = np.around(arr_daily_ret - np.dot(arr_factor_loading, arr_factor_ret),8)
 
-                ser_residual = pd.Series(arr_residual.flatten(), index=df_estimator_matrix.index, name='residual')
-                # residual_path = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.RISKMODEL_RESIDUAL_PATH, 'residual_{}.csv'.format(Utils.datetimelike_to_str(trading_day, dash=False)))
-                # ser_residual.to_csv(residual_path, index=True, header=True, index_label='code')
-                self._save_residual_ret(trading_day, ser_residual, 'a')
+                # ser_residual = pd.Series(arr_residual.flatten(), index=df_estimator_matrix.index,name='residual')
+                # ser_residual['date'] = datetime.datetime(trading_day.year, trading_day.month, trading_day.day)
+                df_residual = pd.DataFrame(arr_residual.reshape((1, len(arr_residual))), index=[trading_day], columns=df_estimator_matrix.index)
+                df_residual_rets = df_residual_rets.append(df_residual)
+                # self._save_residual_ret(trading_day, ser_residual, 'a')
 
             else:
                 logging.info('\033[1;31;40m{}优化计算风险因子报酬无解.\033[0m'.format(Utils.datetimelike_to_str(trading_day, dash=True)))
+
+        # df_residual_rets.index.name = 'date'
+        self._save_residual_ret(start_date, df_residual_rets, 'a')
 
     def calc_factor_covmat(self, start_date, end_date=None, calc_mode='cov'):
         """
@@ -233,7 +238,7 @@ class Barra(object):
         # 读取交易日序列
         start_date = Utils.to_date(start_date)
         if end_date is None:
-            trading_days_series = Utils.get_trading_days(end=start_date, ndasy=1)
+            trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
         else:
             end_date = Utils.to_date(end_date)
             trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
@@ -245,10 +250,11 @@ class Barra(object):
             self._save_spec_var(calc_date, naive_specvar, 'naive')
             if calc_mode == 'var':
                 # 对特质收益率朴素方差矩阵进行Newey_West调整
-                pass
+                nw_spec_var = self._specvar_NeweyWest_adj(naive_specvar, calc_date)
                 # 进行波动率偏误调整
 
                 # 保存特质波动率矩阵数据
+                self._save_spec_var(calc_date, nw_spec_var, 'var')
 
     def _save_factor_ret(self, date, data, save_type='a'):
         """
@@ -288,7 +294,7 @@ class Barra(object):
         --------
         :param date: datetime-like, str
             日期, e.g: YYYY-MM-DD, YYYYMMDD
-        :param data: pd.Series
+        :param data: pd.Series, pd.DataFrame
             个股残差收益率数据
         :param save_type: str
             保存方式, 'a'=新增, 'w'=覆盖, 默认为'a'
@@ -300,18 +306,33 @@ class Barra(object):
         data.name = date
         if save_type == 'a':
             df_residual_ret = self._get_residual_ret()
-            if df_residual_ret is None:
-                df_residual_ret = pd.DataFrame().append(data, ignore_index=True)
-                df_residual_ret.index = [date]
-                df_residual_ret.index.name = 'date'
-                df_residual_ret.to_csv(residual_ret_path)
+            if isinstance(data, pd.Series):
+                if df_residual_ret is None:
+                    df_residual_ret = pd.DataFrame().append(data, ignore_index=True)
+                    df_residual_ret.index = [date]
+                    df_residual_ret.index.name = 'date'
+                    df_residual_ret.to_csv(residual_ret_path)
+                else:
+                    data.name = date
+                    if date in df_residual_ret.index:
+                        df_residual_ret.drop(index=date, inplace=True)
+                    df_residual_ret = df_residual_ret.append(data, ignore_index=False)
+                    df_residual_ret.sort_index(inplace=True)
+                    df_residual_ret.to_csv(residual_ret_path)
+            elif isinstance(data, pd.DataFrame):
+                if df_residual_ret is None:
+                    df_residual_ret.to_csv(residual_ret_path)
+                else:
+                    dates = [d for d in data.index if d in df_residual_ret.index]
+                    if len(dates) > 0:
+                        df_residual_ret.drop(index=dates, inplace=True)
+                    df_residual_ret = df_residual_ret.append(data)
+                    df_residual_ret.sort_index(inplace=True)
+                    if df_residual_ret.index.name != 'date':
+                        df_residual_ret.index.name = 'date'
+                    df_residual_ret.to_csv(residual_ret_path)
             else:
-                data.name = date
-                if date in df_residual_ret.index:
-                    df_residual_ret.drop(index=date, inplace=True)
-                df_residual_ret = df_residual_ret.append(data, ignore_index=False)
-                df_residual_ret.sort_index(inplace=True)
-                df_residual_ret.to_csv(residual_ret_path)
+                raise TypeError("参数data类型必须为pd.Series或pd.DataFrame.")
         elif save_type == 'w':
             data.to_csv(residual_ret_path, index=True)
 
@@ -711,7 +732,7 @@ class Barra(object):
         :param naive_covmat: np.array
             风险因子朴素协方差矩阵,矩阵大小为: N×N
         :param date: datetime-like, str
-            计算日期
+            计算日期, e.g: YYYY-MM-DD, YYYYMMDD
         :return: np.array
         --------
             newey_west调整后的协方差矩阵
@@ -812,14 +833,14 @@ class Barra(object):
         ewma_param = riskmodel_ct.SPECIFICRISK_VARMAT_PARAMS['EWMA']
         df_residual_ret = self._get_residual_ret(end=date)
         # 遍历个股基本信息, 采用EWMA算法计算特质收益率方差
-        symbols = [symbol for symbol in stock_basics['symbol']]
+        symbols = [symbol for symbol in stock_basics['symbol'] if symbol in df_residual_ret.columns.tolist()]
         df_residual_ret = df_residual_ret[symbols]
         weight = Algo.ewma_weight(ewma_param['trailing'], ewma_param['half_life'])
 
         ser_spec_var = pd.Series(name='spec_var')
         for symbol in df_residual_ret.columns:
             arr_residual_ret = np.asarray(df_residual_ret[symbol].dropna().tail(ewma_param['trailing']))
-            if len(arr_residual_ret) < ewma_param['tailing']/2:
+            if len(arr_residual_ret) < ewma_param['trailing']/2:
                 continue
             if len(arr_residual_ret) == ewma_param['trailing']:
                 avg = np.average(arr_residual_ret, weights=weight)
@@ -858,6 +879,70 @@ class Barra(object):
 
         spec_var.to_csv(var_path, index=True, header=True)
 
+    def _specvar_NeweyWest_adj(self, naive_specvar, date):
+        """
+        计算经newey_west调整后的特质波动率方差数据
+        Parameters:
+        --------
+        :param naive_specvar: pd.Series
+            特质波动率朴素方差向量数据
+        :param date: datetime-like, str
+            计算日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :return: pd.Series
+        --------
+            newey_west调整后的特质波动率方差向量数据
+        """
+        nw_param = riskmodel_ct.SPECIFICRISK_VARMAT_PARAMS['Newey_West']
+        date = Utils.to_date(date)
+        # 读取特质收益率序列数据
+        df_spec_ret = self._get_residual_ret(end=date)
+        # 读取股票基本信息
+        stock_basics = Utils.get_stock_basics(date)
+        # 遍历特质收益率序列数据, 计算个股经newey_west调整后的特质波动率方差数据
+        symbols = [symbol for symbol in stock_basics['symbol'] if symbol in df_spec_ret.columns.tolist()]
+        df_spec_ret = df_spec_ret[symbols]
+        codes = df_spec_ret.columns.tolist()
+        D = nw_param['lags']    # 滞后时间长度
+        if D < 1:
+            raise ValueError("滞后时间长度参数lags的值必须大于0")
+        # 计算权重向量组
+        weights = []
+        for delta in range(1, D+1):
+            weights.append(Algo.ewma_weight(nw_param['trailing']-delta, nw_param['half_life']))
+
+        nw_specvar = pd.Series(name='spec_var')     # newey_west调整后的特质收益率方差向量
+        for code in codes:
+            if code not in naive_specvar:
+                continue
+
+            arr_spec_ret = np.array(df_spec_ret[code].dropna())
+            if len(arr_spec_ret) < int(nw_param['trailing']/2):
+                continue
+            if len(arr_spec_ret) > nw_param['trailing']:
+                arr_spec_ret = arr_spec_ret[: nw_param['trailing']]
+
+            nw_adj = 0
+            for delta in range(1, D+1):
+                if len(arr_spec_ret) < nw_param['trailing']:
+                    w = Algo.ewma_weight(len(arr_spec_ret)-delta, nw_param['half_life'])
+                else:
+                    w = weights[delta-1]
+
+                arr_spec_ret1 = arr_spec_ret[: -delta]
+                avg1 = np.average(arr_spec_ret1, weights=w)
+                arr_spec_ret1 = arr_spec_ret1 - avg1
+
+                arr_spec_ret2 = arr_spec_ret[delta:]
+                avg2 = np.average(arr_spec_ret2, weights=w)
+                arr_spec_ret2 = arr_spec_ret2 - avg2
+
+                cov = np.sum(w * arr_spec_ret1 * arr_spec_ret2)
+                alpha = 1.0 - delta / (1.0 + D)
+                nw_adj += alpha * cov * 2
+            nw_specvar[code] = 21.0 * (naive_specvar[code] + nw_adj)
+
+        nw_specvar.index.name = 'code'
+        return nw_specvar
 
 if __name__ == '__main__':
     BarraModel = Barra()
@@ -870,6 +955,7 @@ if __name__ == '__main__':
     # print(BarraModel._get_StyleFactorloading_matrix('2017-12-29').head())
     # print(BarraModel._get_secu_dailyret('2018-01-02').head())
 
-    BarraModel.estimate_factor_ret(start_date='2014-01-11', end_date='2018-06-29')
+    # BarraModel.estimate_factor_ret(start_date='2018-01-01', end_date='2018-06-30')
     # print(BarraModel._naive_factor_covmat('2018-06-29'))
     # BarraModel.calc_factor_covmat(start_date='2017-02-01', end_date='2018-06-29', calc_mode='all')
+    BarraModel.calc_spec_varmat(start_date='2018-01-01', end_date='2018-06-30', calc_mode='var')

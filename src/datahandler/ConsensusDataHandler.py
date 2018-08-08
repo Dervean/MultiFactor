@@ -104,29 +104,29 @@ def load_predictedgrowth_data(date=None):
 
 
 if __name__ == '__main__':
-    # pass
-    load_predictedearning_data(2008)
-    # load_predictedgrowth_data(2011)
+    pass
+    # load_predictedearning_data(2007)
+    # load_predictedgrowth_data(2007)
 
     # ----------填充predicted earnings数据-----------------
-    start_date = '2007-12-28'
-    end_date = '2009-12-31'
-    trading_days_series = Utils.get_trading_days(start_date, end_date)
-    predictedearning_data_path = '/Volumes/DB/FactorDB/ElementaryFactor/consensus_data/predicted_earnings'
-    df_predictedearning = pd.DataFrame()
-    for trading_day in trading_days_series:
-        file_path = os.path.join(predictedearning_data_path, 'predictedearnings_{}.csv'.format(Utils.datetimelike_to_str(trading_day, dash=False)))
-        if os.path.isfile(file_path):
-            df_predictedearning = pd.read_csv(file_path, header=0)
-        else:
-            if not df_predictedearning.empty:
-                print('save predicted earning data of {}.'.format(Utils.datetimelike_to_str(trading_day, dash=True)))
-                df_predictedearning.to_csv(file_path, index=False)
+    # start_date = '2004-12-31'
+    # end_date = '2007-12-28'
+    # trading_days_series = Utils.get_trading_days(start_date, end_date)
+    # predictedearning_data_path = '/Volumes/DB/FactorDB/ElementaryFactor/consensus_data/predicted_earnings'
+    # df_predictedearning = pd.DataFrame()
+    # for trading_day in trading_days_series:
+    #     file_path = os.path.join(predictedearning_data_path, 'predictedearnings_{}.csv'.format(Utils.datetimelike_to_str(trading_day, dash=False)))
+    #     if os.path.isfile(file_path):
+    #         df_predictedearning = pd.read_csv(file_path, header=0)
+    #     else:
+    #         if not df_predictedearning.empty:
+    #             print('save predicted earning data of {}.'.format(Utils.datetimelike_to_str(trading_day, dash=True)))
+    #             df_predictedearning.to_csv(file_path, index=False)
     # ---------------------------------------------------
 
     # ----------填充predicted growth数据-----------------
-    # start_date = '2010-12-31'
-    # end_date = '2011-12-30'
+    # start_date = '2004-12-31'
+    # end_date = '2007-12-28'
     # trading_days_series = Utils.get_trading_days(start_date, end_date)
     # predicted_growth_path = '/Volumes/DB/FactorDB/ElementaryFactor/consensus_data/growth_data'
     # df_predictedgrowth = pd.DataFrame()
