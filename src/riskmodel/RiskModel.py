@@ -29,6 +29,7 @@ import cvxpy as cvx
 from src.util.algo import Algo
 import datetime
 import math
+from src.portfolio.portfolio import WeightHolding, PortHolding
 
 
 logging.basicConfig(level=logging.INFO,
@@ -626,6 +627,22 @@ class Barra(object):
         else:
             return df_StyleFactorloading
 
+    def _get_factorloading_matrix(self, date):
+        """
+        读取风险因子载荷矩阵数据, 含市场因子f_c
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            读取日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :return: pd.DataFrame
+        """
+        date = Utils.to_date(date)
+        ind_factorloading = self._get_IndFactorloading_matrix(date)
+        style_factorloading = self._get_StyleFactorloading_matrix(date)
+        factorloading_matrix = pd.merge(left=ind_factorloading, right=style_factorloading, how='inner', on='code')
+        factorloading_matrix['market'] = 1.0
+        return factorloading_matrix
+
     def _naive_factor_covmat(self, date):
         """
         计算风险模型因子朴素协方差矩阵, 采用EWMA算法计算
@@ -683,7 +700,7 @@ class Barra(object):
         df_covmat = pd.DataFrame(cov_mat, index=factor_names, columns=factor_names)
         df_covmat.to_csv(cov_path, index_label='factor')
 
-    def _get_factor_covmat(self, cov_type, end, ndays=None):
+    def _get_factor_covmat(self, cov_type, end, ndays=None, factors=None):
         """
         读取风险因子协方差矩阵数据
         Parameters:
@@ -694,6 +711,8 @@ class Barra(object):
             天数, 默认为None
         :param cov_type: str
             协方差矩阵类型, 'naive'=朴素协方差矩阵, 'cov'=最终协方差矩阵
+        :param factors: list of str
+            指定需要返回的因子列表
         :return: dict{str, np.array}
         --------
             风险因子协方差因子矩阵数据时间序列, dict{'YYYYMMDD': cov_mat}
@@ -715,6 +734,8 @@ class Barra(object):
         for calc_date in trading_days_series:
             covmat_path = os.path.join(cov_path, 'cov_{}.csv'.format(Utils.datetimelike_to_str(calc_date, dash=False)))
             df_factor_covmat = pd.read_csv(covmat_path, header=0, index_col=0)
+            if df_factor_covmat is not None:
+                df_factor_covmat = df_factor_covmat.loc[factors, factors]
             arr_factor_covmat = np.array(df_factor_covmat)
             factor_covmat[Utils.datetimelike_to_str(calc_date, dash=False)] = arr_factor_covmat
 
@@ -943,6 +964,32 @@ class Barra(object):
 
         nw_specvar.index.name = 'code'
         return nw_specvar
+
+    def risk_contribution(self, holding, date=datetime.date.today()):
+        """
+        对给定的持仓数据进行风险归因
+        Parameters:
+        --------
+        :param holding: WeightHolding类, 或PortHolding类
+            持仓数据
+        :param date: datetime-like, str
+            计算日期
+        :return: pd.Series
+        --------
+            持仓数据在风险因子上的风险归因值(index为风险因子代码)
+        """
+        if (not isinstance(holding, WeightHolding)) and (not isinstance(holding, PortHolding)):
+            raise ValueError("风险归因应提供WeightHolding类或PortHolding类的持仓数据.")
+        date = Utils.to_date(date)
+        if holding.count < 1:
+            raise ValueError("持仓数据不能为空.")
+        codes = holding.holding['code'].tolist()
+        # 取得持仓个股权重列向量
+        w = np.array(holding.holding['weight']).reshape((holding.count, 1))
+        # 取得持仓的风险因子载荷数据
+        df_factorloading = self._get_factorloading_matrix(date)
+
+
 
 if __name__ == '__main__':
     BarraModel = Barra()

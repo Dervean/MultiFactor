@@ -48,8 +48,10 @@ def load_stock_basics(date=None):
     if stock_basics is None:
         print('\033[1;31;40m下载个股基本信息失败.\033[0m')
         return
+    # 勘误表
     Erratas = {'SH601313': {'delist_date': 20180226, 'status': 3},
-               'SH601360': {'list_date': 20180228}}   # 勘误表
+               'SH601360': {'list_date': 20180228},
+               'SH601268': {'list_date': 19000101, 'delist_date': 19000101}}
     for code, errata_info in Erratas.items():
         for column, value in errata_info.items():
             stock_basics.loc[stock_basics[stock_basics['symbol']==code].index, column] = value

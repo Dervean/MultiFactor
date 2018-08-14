@@ -69,6 +69,8 @@ class DBETA(Factor):
         if df_benchmark_quote is None:
             return None
         df_benchmark_quote = df_benchmark_quote[df_benchmark_quote['date'].isin(list(df_secu_quote['date']))]
+        if len(df_benchmark_quote) != len(df_secu_quote):
+            raise ValueError("[beta计算]基准和个股的历史行情长度不一致.")
         df_benchmark_quote.reset_index(drop=True, inplace=True)
         # 计算个股和基准的日收益率序列
         arr_secu_close = np.array(df_secu_quote.iloc[1:]['close'])
@@ -283,6 +285,6 @@ class Beta(Factor):
 
 if __name__ == '__main__':
     # pass
-    # DBETA.calc_factor_loading(start_date='2017-01-03', end_date=None, month_end=False, save=True, multi_proc=False)
-    DBETA.calc_secu_factor_loading('002633', '2017-01-03')
-    Beta.calc_factor_loading(start_date='2017-01-03', end_date=None, month_end=False, save=True, multi_proc=False)
+    DBETA.calc_factor_loading(start_date='2015-01-04', end_date=None, month_end=False, save=True, multi_proc=False)
+    # DBETA.calc_secu_factor_loading('002633', '2017-01-03')
+    # Beta.calc_factor_loading(start_date='2005-01-04', end_date=None, month_end=False, save=True, multi_proc=False)

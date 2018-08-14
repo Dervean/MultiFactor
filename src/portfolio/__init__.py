@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# @Abstract: alpha模型文件
-# @Filename: AlphaModel
-# @Date:   : 2018-08-09 01:57
+# @Abstract: 
+# @Filename: __init__
+# @Date:   : 2018-08-13 20:39
 # @Author  : YuJun
 # @Email   : yujun_mail@163.com
 
