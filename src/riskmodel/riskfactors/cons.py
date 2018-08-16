@@ -146,6 +146,12 @@ INDUSTRY_FACTORS = ['sw_cj', 'sw_cm', 'sw_dqsb', 'sw_dz', 'sw_fdc', 'sw_fzfz', '
                     'sw_nlmy', 'sw_qc', 'sw_qgzz', 'sw_symy', 'sw_spyl', 'sw_tx', 'sw_xxfw', 'sw_yysw', 'sw_yh',
                     'sw_ysjs', 'sw_zh']
 
+# 风险模型的市场因子列表
+MARKET_FACTORS = ['market']
+
+# 风险模型的风险因子总列表
+RISK_FACTORS = MARKET_FACTORS + INDUSTRY_FACTORS + STYLE_RISK_FACTORS
+
 
 if __name__ == '__main__':
     pass

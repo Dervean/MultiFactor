@@ -29,7 +29,7 @@ import cvxpy as cvx
 from src.util.algo import Algo
 import datetime
 import math
-from src.portfolio.portfolio import WeightHolding, PortHolding
+from src.portfolio.portfolio import WeightHolding, PortHolding, load_holding_data
 
 
 logging.basicConfig(level=logging.INFO,
@@ -627,6 +627,10 @@ class Barra(object):
         else:
             return df_StyleFactorloading
 
+    def get_StyleFactorloading_matrix(self, date):
+        """读取风格因子载荷矩阵"""
+        return self._get_StyleFactorloading_matrix(date)
+
     def _get_factorloading_matrix(self, date):
         """
         读取风险因子载荷矩阵数据, 含市场因子f_c
@@ -640,7 +644,8 @@ class Barra(object):
         ind_factorloading = self._get_IndFactorloading_matrix(date)
         style_factorloading = self._get_StyleFactorloading_matrix(date)
         factorloading_matrix = pd.merge(left=ind_factorloading, right=style_factorloading, how='inner', on='code')
-        factorloading_matrix['market'] = 1.0
+        for mf in riskfactor_ct.MARKET_FACTORS:
+            factorloading_matrix[mf] = 1.0
         return factorloading_matrix
 
     def _naive_factor_covmat(self, date):
@@ -706,7 +711,7 @@ class Barra(object):
         Parameters:
         --------
         :param end: datetime-like, str
-            结束日期, e.g: YYYY-MM-DD, YYYYMMDD, 默认为None
+            结束日期, e.g: YYYY-MM-DD, YYYYMMDD
         :param ndays: int
             天数, 默认为None
         :param cov_type: str
@@ -900,6 +905,47 @@ class Barra(object):
 
         spec_var.to_csv(var_path, index=True, header=True)
 
+    def _get_spec_var(self, var_type, end, ndays=None):
+        """
+        读取个股特质波动率方差数据
+        Parameters:
+        --------
+        :param var_type: str
+            特质博定律方差的数据类型, 'naive'=朴素方差数据, 'var'=最终特质波动率方差数据
+        :param end: datetime-like, str
+            结束日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :param ndays: int
+            天数, 默认为None
+        :return: dict{str, pd.DataFrame}
+        --------
+            个股特质波动率方差数据时间序列, dict{'YYYYMMDD': spec_var}
+        """
+        if var_type == 'naive':
+            specvar_basepath = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.SPECIFICRISK_NAIVE_VARMAT_PATH)
+        elif var_type == 'var':
+            specvar_basepath = os.path.join(SETTINGS.FACTOR_DB_PATH, riskmodel_ct.SPECIFICRISK_VARMAT_PATH)
+        else:
+            raise ValueError("特质波动率数据类型错误.")
+
+        end = Utils.to_date(end)
+        if ndays is None:
+            trading_days_series = Utils.get_trading_days(end=end, ndays=1)
+        else:
+            trading_days_series = Utils.get_trading_days(end=end, ndays=ndays)
+
+        spec_var = {}
+        for calc_date in trading_days_series:
+            specvar_path = os.path.join(specvar_basepath, 'specvar_{}.csv'.format(Utils.datetimelike_to_str(calc_date, dash=False)))
+            if not os.path.isfile(specvar_path):
+                raise FileExistsError("文件%s不存在." % specvar_path)
+            df_specvar = pd.read_csv(specvar_path, header=0)
+            spec_var[Utils.datetimelike_to_str(calc_date, dash=False)] = df_specvar
+
+        if len(spec_var) == 0:
+            return None
+        else:
+            return spec_var
+
     def _specvar_NeweyWest_adj(self, naive_specvar, date):
         """
         计算经newey_west调整后的特质波动率方差数据
@@ -965,7 +1011,7 @@ class Barra(object):
         nw_specvar.index.name = 'code'
         return nw_specvar
 
-    def risk_contribution(self, holding, date=datetime.date.today()):
+    def risk_contribution(self, holding, date=datetime.date.today(), benchmark=None):
         """
         对给定的持仓数据进行风险归因
         Parameters:
@@ -974,6 +1020,8 @@ class Barra(object):
             持仓数据
         :param date: datetime-like, str
             计算日期
+        :param benchmark: str
+            比较基准的代码, e.g: SH000300
         :return: pd.Series
         --------
             持仓数据在风险因子上的风险归因值(index为风险因子代码)
@@ -984,11 +1032,41 @@ class Barra(object):
         if holding.count < 1:
             raise ValueError("持仓数据不能为空.")
         codes = holding.holding['code'].tolist()
-        # 取得持仓个股权重列向量
-        w = np.array(holding.holding['weight']).reshape((holding.count, 1))
+        # 取得持仓数据
+        df_holding = holding.holding
+        # # 取得持仓个股权重列向量
+        # w = np.array(holding.holding['weight']).reshape((holding.count, 1))
         # 取得持仓的风险因子载荷数据
         df_factorloading = self._get_factorloading_matrix(date)
+        df_factorloading = pd.merge(left=df_holding, right=df_factorloading, how='inner', on='code')
+        # 取得个股特质波动率方差矩阵数据
+        df_specvar = self._get_spec_var('var', date)[Utils.datetimelike_to_str(date, dash=False)]
+        df_factorloading = pd.merge(left=df_specvar, right=df_factorloading, how='inner', on='code')
 
+        # df_factorloading.set_index('code', inplace=True)
+        arr_factorloading = np.array(df_factorloading.loc[:, riskfactor_ct.RISK_FACTORS])               # 因子暴露矩阵
+        arr_weight = np.array(df_factorloading.loc[:, 'weight']).reshape((len(df_factorloading), 1))    # 个股权重向量
+        arr_specvar =np.diagflat(df_factorloading['spec_var'].tolist())                                 # 特质波动率方差矩阵
+        # 取得风险因子协方差矩阵
+        arr_factor_covmat = self._get_factor_covmat('cov', date, factors=riskfactor_ct.RISK_FACTORS)[Utils.datetimelike_to_str(date, dash=False)]
+
+        # 计算组合预期波动率
+        fsigma = np.sqrt(np.linalg.multi_dot([arr_weight.T, arr_factorloading, arr_factor_covmat, arr_factorloading.T, arr_weight]) + np.linalg.multi_dot([arr_weight.T, arr_specvar, arr_weight]))
+        fsigma = float(fsigma)
+
+        # 计算风险归因值
+        Psi = np.dot(arr_weight.T, arr_factorloading).transpose()
+        risk_contribution = 1.0 / fsigma * Psi * np.dot(arr_factor_covmat, Psi)
+        risk_contribution = pd.Series(risk_contribution.flatten(), index=riskfactor_ct.RISK_FACTORS)    # 风险因子的风险贡献数据
+        fselection = fsigma - risk_contribution.sum()
+        fallocation = risk_contribution.sum() - risk_contribution['market']
+        risk_contribution['sigma'] = fsigma                                                         # 组合预期波动率
+        risk_contribution['selection'] = fselection                                                 # 选股带来的风险贡献
+        risk_contribution['allocation'] = fallocation                                               # 配置带来的风险贡献
+        risk_contribution['industry'] = risk_contribution[riskfactor_ct.INDUSTRY_FACTORS].sum()     # 行业因子风险贡献
+        risk_contribution['style'] = risk_contribution[riskfactor_ct.STYLE_RISK_FACTORS].sum()      # 风格因子风险贡献
+
+        return risk_contribution
 
 
 if __name__ == '__main__':
@@ -1005,4 +1083,8 @@ if __name__ == '__main__':
     # BarraModel.estimate_factor_ret(start_date='2018-01-01', end_date='2018-06-30')
     # print(BarraModel._naive_factor_covmat('2018-06-29'))
     # BarraModel.calc_factor_covmat(start_date='2017-02-01', end_date='2018-06-29', calc_mode='all')
-    BarraModel.calc_spec_varmat(start_date='2018-01-01', end_date='2018-06-30', calc_mode='var')
+    # BarraModel.calc_spec_varmat(start_date='2018-01-01', end_date='2018-06-30', calc_mode='var')
+
+    holding_data = load_holding_data('tmp', 'sh50')
+    risk_contribution = BarraModel.risk_contribution(holding_data, '2018-06-29')
+    print(risk_contribution)

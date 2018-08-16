@@ -8,6 +8,9 @@
 
 import pandas as pd
 from collections import OrderedDict
+import os
+import src.settings as SETTINGS
+import src.portfolio.cons as portfolio_ct
 
 
 class WeightHolding(object):
@@ -61,7 +64,7 @@ class WeightHolding(object):
             idx = self._data[self._data['code'] == data['code']].index
             self._data.loc[idx, 'weight'] += data['weight']
         else:
-            self._data.append(data, ignore_index=True)
+            self._data = self._data.append(data, ignore_index=True)
 
 
 class PortHolding(object):
@@ -144,5 +147,41 @@ class Portfolio(object):
         """
 
 
+def load_holding_data(port_name=None, holding_name=None, holding_path=None):
+    """
+    读取组合持仓数据
+    Parameters:
+    ------
+    :param port_name: str
+        组合名称
+    :param holding_name: str
+        持仓名称
+    :param holding_path: str
+        持仓文件路径
+    :return: WeightHolding
+    ------
+        1. 如果port_name和holding_name均不为None, 那么从FactorDB/portfolio/port_name/holding_name.csv文件中读取持仓数据
+        2. 否则从holding_path指定的持仓文件中读取持仓数据
+    """
+    if holding_path is None:
+        if (port_name is None) or (holding_name is None):
+            raise ValueError("请指定(组合名称、持仓名称)或者持仓文件路径.")
+        else:
+            holding_path = os.path.join(SETTINGS.FACTOR_DB_PATH, portfolio_ct.PORTFOLIO_HOLDING_PATH, port_name, ''.join([holding_name, '.csv']))
+    if not os.path.isfile(holding_path):
+        raise FileExistsError("持仓文件不存在:%s" % holding_path)
+
+    df_holdings = pd.read_csv(holding_path, header=0)
+    if not all([col in df_holdings.columns for col in portfolio_ct.WEIGHTHOLDING_DATA_HEADER]):
+        raise ValueError("持仓数据应包含%s" % str(portfolio_ct.WEIGHTHOLDING_DATA_HEADER))
+
+    holding_data = WeightHolding()
+    for _, data in df_holdings.iterrows():
+        holding_data.append(data)
+    return holding_data
+
+
 if __name__ == '__main__':
     pass
+    holding_data = load_holding_data('tmp', 'sh50')
+    print(holding_data.holding)

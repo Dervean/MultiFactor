@@ -1131,7 +1131,7 @@ class Utils(object):
         if nan_value is not None:
             df_factor_loading = df_factor_loading.fillna(nan_value)
         if drop_na:
-            df_factor_loading.dropna(axis=0, how='any')
+            df_factor_loading.dropna(axis=0, how='any', inplace=True)
         return df_factor_loading
 
     @classmethod

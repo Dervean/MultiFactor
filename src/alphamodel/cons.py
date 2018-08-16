@@ -6,6 +6,9 @@
 # @Author  : YuJun
 # @Email   : yujun_mail@163.com
 
+# 跟踪聪明钱因子的配置参数
+SMARTMONEY_CT = {}
+
 
 if __name__ == '__main__':
     pass
