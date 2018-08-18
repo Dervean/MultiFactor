@@ -1120,6 +1120,8 @@ class Utils(object):
                 db.close()
         elif using_type == 'csv':
             db_file += '_%s.csv' % str_key
+            if not os.path.isfile(db_file):
+                raise FileExistsError("因子文件%s不存在." % db_file)
             df_factor_loading = pd.read_csv(db_file, header=0)
         else:
             df_factor_loading = DataFrame()

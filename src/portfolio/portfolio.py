@@ -13,7 +13,7 @@ import src.settings as SETTINGS
 import src.portfolio.cons as portfolio_ct
 
 
-class WeightHolding(object):
+class CWeightHolding(object):
     """以权重方式表示的组合持仓类"""
 
     def __init__(self):
@@ -21,11 +21,11 @@ class WeightHolding(object):
         初始化
         --------
         持仓数据self._data的数据结构为:
-        0. code: 证券代码
-        1. name: 证券名称
+        0. date: 日期
+        1. code: 证券代码
         2. weight: 持仓权重
         """
-        self._data = pd.DataFrame(columns=['code', 'name', 'weight'])
+        self._data = pd.DataFrame(columns=['date', 'code', 'weight'])
 
     @property
     def holding(self):
@@ -55,8 +55,8 @@ class WeightHolding(object):
         --------
         :param data: pd.Series, dict
             单条持仓数据, 字段格式:
-            0. code: 证券代码
-            1. name: 证券名称
+            0. date: 日期
+            1. code: 证券代码
             2. weight: 持仓权重
         :return:
         """
@@ -66,8 +66,25 @@ class WeightHolding(object):
         else:
             self._data = self._data.append(data, ignore_index=True)
 
+    def from_dataframe(self, df_data):
+        """
 
-class PortHolding(object):
+        :param df_data:
+        :return:
+        """
+
+    def save_data(self, holding_path):
+        """
+        保存持仓数据
+        Parameters:
+        --------
+        :param holding_path: 持仓保存路径
+        :return:
+        """
+        self._data.to_csv(holding_path, index=False)
+
+
+class CPortHolding(object):
     """投资组合持仓类"""
 
     def __init__(self):
@@ -75,13 +92,13 @@ class PortHolding(object):
         初始化
         ----
         持仓数据self._data的数据结构为:
-        0. code: 证券代码
-        1. name: 证券名称
+        0. date: 日期
+        1. code: 证券代码
         2. volume: 持仓量
         3. value: 持仓市值
         4. weight: 持仓权重
         """
-        self._data = pd.DataFrame(columns=['code', 'name', 'volume', 'value', 'weight'])     # 持仓数据, pd.DataFrame
+        self._data = pd.DataFrame(columns=['date', 'code', 'volume', 'value', 'weight'])     # 持仓数据, pd.DataFrame
 
     @property
     def holding(self):
@@ -105,8 +122,8 @@ class PortHolding(object):
         --------
         :param data: pd.Series, dict
             单条持仓数据, 字段格式:
-            0. code: 证券代码
-            1. name: 证券名称
+            0. date: 日期
+            1. code: 证券代码
             2. volume: 持仓量
         :return:
         """
@@ -117,7 +134,7 @@ class PortHolding(object):
             self._data.append(data, ignore_index=True)
 
 
-class Portfolio(object):
+class CPortfolio(object):
     """投资组合类"""
 
     def __init__(self):
@@ -175,7 +192,7 @@ def load_holding_data(port_name=None, holding_name=None, holding_path=None):
     if not all([col in df_holdings.columns for col in portfolio_ct.WEIGHTHOLDING_DATA_HEADER]):
         raise ValueError("持仓数据应包含%s" % str(portfolio_ct.WEIGHTHOLDING_DATA_HEADER))
 
-    holding_data = WeightHolding()
+    holding_data = CWeightHolding()
     for _, data in df_holdings.iterrows():
         holding_data.append(data)
     return holding_data

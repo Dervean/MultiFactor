@@ -9,10 +9,14 @@
 import os
 import pandas as pd
 import numpy as np
+import statsmodels.api as sm
+import cvxpy as cvx
 import src.settings as SETTINGS
 import src.alphamodel.alphafactors.cons as alphafactor_ct
+import src.riskmodel.riskfactors.cons as riskfactor_ct
 from src.util.utils import Utils
-from src.riskmodel.RiskModel import BarraModel
+from src.riskmodel.RiskModel import Barra
+from src.portfolio.portfolio import CWeightHolding
 
 
 def _calc_Orthogonalized_factorloading(factor_name, start_date, end_date=None, month_end=True, save=False):
@@ -30,10 +34,10 @@ def _calc_Orthogonalized_factorloading(factor_name, start_date, end_date=None, m
         是否只计算月末日期的因子载荷
     :param save: bool, 默认False
         是否保存计算结果
-    :return: pd.DataFrame
+    :return: dict
     --------
         因子经正交化后的因子载荷
-        0. 日期, 为计算日期的下一个交易日
+        0. date, 为计算日期的下一个交易日
         1. id, 证券代码
         2. factorvalue, 因子载荷
         如果end_date=None，返回start_date对应的因子载荷数据
@@ -47,7 +51,8 @@ def _calc_Orthogonalized_factorloading(factor_name, start_date, end_date=None, m
     else:
         trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
 
-    riskmodel = BarraModel()
+    CRiskModel = Barra()
+    orthog_factorloading = {}
     for calc_date in trading_days_series:
         if month_end and (not Utils.is_month_end(calc_date)):
             continue
@@ -59,7 +64,7 @@ def _calc_Orthogonalized_factorloading(factor_name, start_date, end_date=None, m
         df_targetfactor_loading.rename(columns={'factorvalue': factor_name}, inplace=True)
 
         # 读取风险模型中的风格因子载荷矩阵
-        df_stylefactor_loading = riskmodel.get_StyleFactorloading_matrix(calc_date)
+        df_stylefactor_loading = CRiskModel.get_StyleFactorloading_matrix(calc_date)
         df_stylefactor_loading.renmae(columns={'code': 'id'}, inplace=True)
 
         # 读取alpha因子载荷矩阵数据(经正交化后的载荷值)
@@ -90,7 +95,131 @@ def _calc_Orthogonalized_factorloading(factor_name, start_date, end_date=None, m
         arr_stylealphafactor_loading = np.array(df_factorloading[stylealphafactor_names])
 
         # 将arr_targetfactor_loading对arr_stylealphafactor_loading进行截面回归, 得到的残差即为正交化后的因子载荷
+        Y = arr_targetfactor_loading
+        X = sm.add_constant(arr_stylealphafactor_loading)
+        model = sm.OLS(Y, X)
+        results = model.fit()
+
+        datelabel = Utils.get_trading_days(start=calc_date, ndays=2)[1]
+        orthog_factorloading = {'date': [datelabel]*len(results.resid), 'id': df_factorloading.index.tolist(), 'factorvalue': results.resid}
+
+        # 保存正交化后的因子载荷
+        if save:
+            orthog_factorloading_path = os.path.join(SETTINGS.FACTOR_DB_PATH, eval('alphafactor_ct.'+factor_name.upper()+'_CT')['db_file'], 'orthogonalized', factor_name)
+            Utils.factor_loading_persistent(orthog_factorloading_path, Utils.datetimelike_to_str(calc_date, dash=False), orthog_factorloading, ['date', 'id', 'factorvalue'])
+
+    return orthog_factorloading
+
+def _get_factorloading(factor_name, date, factor_type):
+    """
+    读取个股因子载荷数据
+    Parameters:
+    --------
+    :param factor_name: str
+        alpha因子名称, e.g: SmartMoney
+    :param date: datetime-like, str
+        日期, e.g: YYYY-MM-DD, YYYYMMDD
+    :param factor_type: str
+        因子类型:
+        'raw': 原始因子, 'standardized': 去极值标准化后的因子, 'orthogonalized': 正交化后的因子
+    :return: pd.DataFrame
+    --------
+        因子载荷向量数据
+        0. date: 日期
+        1. id: 证券代码
+        2. factorvalue: 因子值
+    """
+    date = Utils.datetimelike_to_str(date, dash=False)
+    factorloading_path = os.path.join(SETTINGS.FACTOR_DB_PATH, eval('alphafactor_ct.'+factor_name.upper()+'.CT')['db_file'], factor_type, factor_name)
+    df_factorloading = Utils.read_factor_loading(factorloading_path, date, drop_na=True)
+    return df_factorloading
+
+
+def _calc_MVPFP(factor_name, start_date, end_date=None, month_end=True, save=False):
+    """
+    构建目标因子的最小波动纯因子组合
+    Parameters:
+    --------
+    :param factor_name: str
+        alpha因子名称, e.g: SmartMoney
+    :param start_date: datetime-like, str
+        开始日期, e.g: YYYY-MM-DD, YYYYMMDD
+    :param end_date: datetime-like, str, 默认为None
+        结束日期, e.g: YYYY-MM-DD, YYYYMMDD
+    :param month_end: bool, 默认为True
+        是否只计算月末日期的因子载荷
+    :param save: bool, 默认为False
+        是否保存计算结果
+    :return: CWeightHolding类
+        最小波动纯因子组合权重数据
+    --------
+    具体优化算法:暴露1单位目标因子敞口, 同时保持其余所有风险因子的敞口为0, 并具有最小预期波动率的组合
+    Min: W'VW
+    s.t. W'X_beta = 0
+         W'x_target = 1
+    其中: W: 最小波动纯因子组合对应的权重
+         V: 个股协方差矩阵
+         X_beta: 个股风格因子载荷矩阵
+         x_target: 个股目标因子载荷向量
+    """
+    start_date = Utils.to_date(start_date)
+    if end_date is None:
+        trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
+    else:
+        end_date = Utils.to_date(end_date)
+        trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
+
+    CRiskModel = Barra()
+    mvpfp_holding = CWeightHolding()
+    for calc_date in trading_days_series:
+        if month_end and (not Utils.is_month_end(calc_date)):
+            continue
+        # 取得/计算calc_date的个股协方差矩阵数据
+        stock_codes, arr_stocks_covmat = CRiskModel.calc_stocks_covmat(calc_date)
+        # 取得个股风格因子载荷矩阵数据
+        df_stylefactor_loading = CRiskModel.get_StyleFactorloading_matrix(calc_date)
+        # df_stylefactor_loading.set_index('code', inplace=True)
+        # df_stylefactor_loading = df_stylefactor_loading.loc[stock_codes]    # 按个股顺序重新排列
+        # arr_stylefactor_loading = np.array(df_stylefactor_loading)
+        # 取得个股目标因子载荷向量数据(正交化后的因子载荷)
+        df_targetfactor_loading = _get_factorloading(factor_name, calc_date, alphafactor_ct.FACTORLOADING_TYPE['ORTHOGONALIZED'])
+        df_targetfactor_loading.drop(columns='date', inplace=True)
+        df_targetfactor_loading.rename(columns={'id': 'code', 'factorvalue': factor_name}, inplace=True)
+
+        df_factorloading = pd.merge(left=df_stylefactor_loading, right=df_targetfactor_loading, how='inner', on='code')
+        df_factorloading.set_index('code', inplace=True)
+
+        df_stylefactor_loading = df_factorloading.loc[stock_codes, riskfactor_ct.STYLE_RISK_FACTORS]
+        arr_stylefactor_laoding = np.array(df_stylefactor_loading)
+
+        df_targetfactor_loading = df_factorloading.loc[stock_codes, factor_name]
+        arr_targetfactor_loading = np.array(df_targetfactor_loading)
+
+        # 优化计算最小波动纯因子组合权重
+        V = arr_stocks_covmat
+        X_beta = arr_stylefactor_laoding
+        x_target = arr_targetfactor_loading
+        N = len(stock_codes)
+        w = cvx.Variable((N, 1))
+        risk = cvx.quad_form(w, V)
+        constraints = [cvx.matmul(w.T * X_beta) == 0,
+                       cvx.matmul(w.T * x_target) == 1]
+        prob = cvx.Problem(cvx.Minimize(risk), constraints)
+        prob.solve()
+        if prob.status == cvx.OPTIMAL:
+            datelabel = Utils.datetimelike_to_str(calc_date, dash=False)
+            df_holding = pd.DataFrame({'date': [datelabel]*len(stock_codes), 'code': stock_codes, 'weight': w.value})
+            mvpfp_holding.from_dataframe(df_holding)
+            if save:
+                holding_path = os.path.join(SETTINGS.FACTOR_DB_PATH, eval('alphafactor_ct.'+factor_name.upper()+'.CT')['db_file'], 'mvpfp', '{}_{}.csv'.format(factor_name, datelabel))
+                mvpfp_holding.save_data(holding_path)
+        else:
+            raise cvx.SolverError("%s优化计算%s最小纯因子组合失败。" % (Utils.datetimelike_to_str(calc_date), factor_name))
+
+    return mvpfp_holding
+
 
 
 if __name__ == '__main__':
     pass
+

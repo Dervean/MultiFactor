@@ -66,6 +66,13 @@ GROWTH_CT = DottableDict({'db_file': 'Growth/Growth',                   # 因子
 # alpha因子列表
 ALPHA_FACTORS = ['SmartMoney', 'APM', 'CYQ']
 
+# 因子载荷类型
+FACTORLOADING_TYPE = {'RAW': 'raw',                         # 原始因子载荷
+                      'STANDARDIZED': 'standardized',       # 去极值标准化后的因子载荷
+                      'ORTHOGONALIZED': 'orthogonalized'    # 正交化后的因子载荷
+                      }
+
+
 # 因子数据库的路径
 # FACTOR_DB = DottableDict({'db_path': '/Users/davidyujun/Dropbox/FactorDB'})
 FACTOR_DB = DottableDict({'db_path': SETTINGS.FACTOR_DB_PATH})

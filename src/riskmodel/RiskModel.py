@@ -29,7 +29,7 @@ import cvxpy as cvx
 from src.util.algo import Algo
 import datetime
 import math
-from src.portfolio.portfolio import WeightHolding, PortHolding, load_holding_data
+from src.portfolio.portfolio import CWeightHolding, CPortHolding, load_holding_data
 
 
 logging.basicConfig(level=logging.INFO,
@@ -256,6 +256,35 @@ class Barra(object):
 
                 # 保存特质波动率矩阵数据
                 self._save_spec_var(calc_date, nw_spec_var, 'var')
+
+    def calc_stocks_covmat(self, calc_date):
+        """
+        计算个股协方差矩阵
+        Parameters:
+        --------
+        :param calc_date: datetime-like, str
+            计算日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :return: tuple(list, np.array)
+        --------
+            返回一个元组, 第一个元素为个股代码list, 第二个元素为个股协方差矩阵
+        """
+        calc_date = Utils.to_date(calc_date)
+        # 取得个股风险因子载荷数据
+        df_factorloading = self._get_factorloading_matrix(calc_date)
+        # 取得个股特质波动率方差数据
+        df_specvar = self._get_spec_var('var', calc_date)[Utils.datetimelike_to_str(calc_date, dash=False)]
+
+        tmp = pd.merge(left=df_factorloading, right=df_specvar, how='inner', on='code')
+        arr_factorloading = np.array(tmp.loc[:, riskfactor_ct.RISK_FACTORS])    # 个股因子载荷矩阵, 记为X
+        arr_specvar = np.diagflat(tmp['spec_var'].tolist())                     # 个股特质波动率方差矩阵, 记为sigma
+
+        # 取得风险因子协方差矩阵数据, 记为F
+        arr_factor_covmat = self._get_factor_covmat('cov', calc_date, factors=riskfactor_ct.RISK_FACTORS)[Utils.datetimelike_to_str(calc_date, dash=False)]
+
+        # 个股协方差矩阵V = XFX'+sigma
+        V = np.linalg.multi_dot([arr_factorloading, arr_factor_covmat, arr_factorloading.T]) + arr_specvar
+
+        return tmp['code'].tolist(), V
 
     def _save_factor_ret(self, date, data, save_type='a'):
         """
@@ -1026,7 +1055,7 @@ class Barra(object):
         --------
             持仓数据在风险因子上的风险归因值(index为风险因子代码)
         """
-        if (not isinstance(holding, WeightHolding)) and (not isinstance(holding, PortHolding)):
+        if (not isinstance(holding, CWeightHolding)) and (not isinstance(holding, CPortHolding)):
             raise ValueError("风险归因应提供WeightHolding类或PortHolding类的持仓数据.")
         date = Utils.to_date(date)
         if holding.count < 1:

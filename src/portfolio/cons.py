@@ -10,7 +10,7 @@
 PORTFOLIO_HOLDING_PATH = 'portfolio/holdings'
 
 # WeightHolding类持仓数据中的columns
-WEIGHTHOLDING_DATA_HEADER = ['code', 'name', 'weight']
+WEIGHTHOLDING_DATA_HEADER = ['date', 'code', 'weight']
 
 if __name__ == '__main__':
     pass
