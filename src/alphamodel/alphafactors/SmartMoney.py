@@ -214,6 +214,8 @@ class SmartMoney(Factor):
         :param month_end: bool，默认True
             只计算月末时点的因子载荷
         :param save: 是否保存至因子数据库，默认为False
+        :param kwargs:
+            'multi_proc': bool, True=采用多进程并行计算, False=采用单进程计算, 默认为False
         :return: 因子载荷，DataFrame
         --------
             因子载荷,DataFrame
@@ -247,29 +249,32 @@ class SmartMoney(Factor):
             s = (calc_date - datetime.timedelta(days=90)).strftime('%Y%m%d')
             stock_basics = all_stock_basics[all_stock_basics.list_date < s]
             # 3.遍历样本个股代码，计算Smart_Q因子载荷值
-            dict_factor = {'id': [], 'factorvalue': []}
+            dict_factor = {'date': None, 'id': [], 'factorvalue': []}
 
-            # 采用单进程进行计算
-            # for _, stock_info in stock_basics.iterrows():
-            #     # code = '%s%s' % ('SH' if code[:2] == '60' else 'SZ', code)
-            #     factor_loading = cls._calc_factor_loading(stock_info.symbol, calc_date)
-            #     print("[%s]Calculating %s's SmartMoney factor loading = %.4f." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol, -1.0 if factor_loading is None else factor_loading))
-            #     if factor_loading is not None:
-            #         # df_factor.ix[code, 'factorvalue'] = factor_loading
-            #         dict_factor['id'].append(Utils.code_to_symbol(stock_info.symbol))
-            #         dict_factor['factorvalue'].append(factor_loading)
-
-            # 采用多进程并行计算SmartQ因子载荷
-            q = Manager().Queue()   # 队列，用于进程间通信，存储每个进程计算的因子载荷值
-            p = Pool(4)             # 进程池，最多同时开启4个进程
-            for _, stock_info in stock_basics.iterrows():
-                p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
-            p.close()
-            p.join()
-            while not q.empty():
-                smart_q = q.get(True)
-                dict_factor['id'].append(smart_q[0])
-                dict_factor['factorvalue'].append(smart_q[1])
+            if 'multi_proc' not in kwargs:
+                kwargs['multi_proc'] = False
+            if not kwargs['multi_proc']:
+                # 采用单进程进行计算
+                for _, stock_info in stock_basics.iterrows():
+                    # code = '%s%s' % ('SH' if code[:2] == '60' else 'SZ', code)
+                    factor_loading = cls._calc_factor_loading(stock_info.symbol, calc_date)
+                    print("[%s]Calculating %s's SmartMoney factor loading = %.4f." % (calc_date.strftime('%Y-%m-%d'), stock_info.symbol, -1.0 if factor_loading is None else factor_loading))
+                    if factor_loading is not None:
+                        # df_factor.ix[code, 'factorvalue'] = factor_loading
+                        dict_factor['id'].append(Utils.code_to_symbol(stock_info.symbol))
+                        dict_factor['factorvalue'].append(factor_loading)
+            else:
+                # 采用多进程并行计算SmartQ因子载荷
+                q = Manager().Queue()   # 队列，用于进程间通信，存储每个进程计算的因子载荷值
+                p = Pool(4)             # 进程池，最多同时开启4个进程
+                for _, stock_info in stock_basics.iterrows():
+                    p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
+                p.close()
+                p.join()
+                while not q.empty():
+                    smart_q = q.get(True)
+                    dict_factor['id'].append(smart_q[0])
+                    dict_factor['factorvalue'].append(smart_q[1])
 
             date_label = Utils.get_trading_days(calc_date, ndays=2)[1]
             dict_factor['date'] = [date_label] * len(dict_factor['id'])

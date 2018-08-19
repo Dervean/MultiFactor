@@ -17,6 +17,44 @@ import src.riskmodel.riskfactors.cons as riskfactor_ct
 from src.util.utils import Utils
 from src.riskmodel.RiskModel import Barra
 from src.portfolio.portfolio import CWeightHolding
+from src.alphamodel.alphafactors import *
+
+
+def _calc_alpahfactor_loading(start_date, end_date=None, factor_name=None, multi_proc=False):
+    """
+    计算alpha因子因子载荷值(原始载荷值及去极值标准化后载荷值)
+    Parameters:
+    --------
+    :param start_date: datetime-like, str
+        开始日期, e.g: YYYY-MM-DD, YYYYMMDD
+    :param end_date: datetime-like, str, 默认为None
+        结束日期, e.g: YYYY-MM-DD, YYYYMMDD
+    :param factor_name: str, 默认为None
+        alpha因子名称, e.g: SmartMoney
+        factor_namea为None时, 计算所有alpha因子载荷值; 不为None时, 计算指定alpha因子的载荷值
+    :param multi_proc: bool, 默认为None
+        是否进行并行计算
+    :return: 保存因子载荷值(原始载荷值及去极值标准化后的载荷值)
+    """
+    # param_cons = eval('alphafactor_ct.'+factor_name.upper() + '_CT')
+    start_date = Utils.to_date(start_date)
+    if end_date is None:
+        trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
+    else:
+        end_date = Utils.to_date(end_date)
+        trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
+
+    for calc_date in trading_days_series:
+        if factor_name is None:
+            for alphafactor_name in alphafactor_ct.ALPHA_FACTORS:
+                CAlphaFactor = eval(alphafactor_name+'()')
+                CAlphaFactor.calc_factor_loading(calc_date, month_end=True, save=True, multi_proc=multi_proc)
+        else:
+            if factor_name in alphafactor_ct.ALPHA_FACTORS:
+                CAlphaFactor = eval(factor_name + '()')
+                CAlphaFactor.calc_factor_loading(calc_date, month_end=True, save=True, multi_proc=multi_proc)
+            else:
+                raise ValueError("alpha因子类: %s, 不存在." % factor_name)
 
 
 def _calc_Orthogonalized_factorloading(factor_name, start_date, end_date=None, month_end=True, save=False):
