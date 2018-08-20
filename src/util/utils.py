@@ -1066,7 +1066,7 @@ class Utils(object):
             因子载荷数据文件，绝对路径
         :param str_key: str
             持久化因子载荷时用到的key，一般为日期，格式YYYYMMDD
-        :param dict_factor_loading: dict
+        :param dict_factor_loading: dict, pd.DataFrame
             因子载荷值
         :param columns: sequence, 默认=None
             输出的列，并按指定顺序输出
@@ -1083,7 +1083,12 @@ class Utils(object):
                     db.close()
             elif perst_type == 'csv':
                 db_file += '_%s.csv' % str_key
-                DataFrame(dict_factor_loading).to_csv(db_file, index=False, columns=columns, na_rep='NaN')
+                if isinstance(dict_factor_loading, dict):
+                    DataFrame(dict_factor_loading).to_csv(db_file, index=False, columns=columns, na_rep='NaN')
+                elif isinstance(dict_factor_loading, DataFrame):
+                    dict_factor_loading.to_csv(db_file, index=False, columns=columns, na_rep='NaN')
+                else:
+                    raise TypeError("保存的因子载荷数据类型应该为dict或pd.DataFrame")
 
     @classmethod
     def read_factor_loading(cls, db_file, str_key, code=None, nan_value=None, drop_na=False):

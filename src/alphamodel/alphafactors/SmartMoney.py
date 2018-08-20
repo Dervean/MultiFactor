@@ -11,7 +11,7 @@ from src.factors.factor import Factor
 import datetime
 import numpy as np
 import os
-# import pandas as pd
+import pandas as pd
 from pandas import DataFrame
 from pandas import Series
 import math
@@ -27,114 +27,10 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 
-# def _get_year_tradingdays(year):
-#     """
-#     取得指定年份的交易日列表
-#     Parameters:
-#     ------
-#     :param year: int
-#         指定年份，如2017
-#     :return: list of datetime.datetime
-#         指定年份的交易日列表，降序排列，日期格式：YYYY-MM-DD
-#     """
-#     ts_conn = ts.get_apis()
-#     start_date = '%d-01-01' % year
-#     end_date = '%d-10-31' % year
-#     df = ts.bar(code='000001', conn=ts_conn, start_date=start_date, end_date=end_date, freq='D', asset='INDEX')
-#     pydate_array = df.index.to_pydatetime()
-#     # date_only_array = np.vectorize(lambda s: s.strftime('%Y-%m-%d'))(pydate_array)
-#     ts.close_apis(ts_conn)
-#     return list(pydate_array)
-#
-#
-# def _get_trading_days(end_date, days_num):
-#     """
-#     取得交易日期列表
-#     :param end_date: 截止日期（含），类型=datetime.date
-#     :param days_num: 交易日数量
-#     :return: 交易日列表，降序排列，日期格式：YYYY-MM-DD
-#     """
-#     ts_conn = ts.get_apis()
-#     start_date = end_date + datetime.timedelta(days=-days_num)
-#     df = ts.bar(code='000001', conn=ts_conn, start_date=start_date.strftime('%Y-%m-%d'),
-#                 end_date=end_date.strftime('%Y-%m-%d'), freq='D', asset='INDEX')
-#     pydate_array = df.index.to_pydatetime()
-#     date_only_array = np.vectorize(lambda s: s.strftime('%Y-%m-%d'))(pydate_array)
-#     ts.close_apis(ts_conn)
-#     return list(date_only_array)
-#
-#
-# def _get_min_mkts_fq(code, days, ret_num):
-#     """
-#     获取个股指定日期的复权分钟行情数据，日期范围由days列表指定，返回ret_num天的数据
-#     Parameters:
-#     ------
-#     :param code:string
-#         个股代码，如SH600000
-#     :param days:list-like of string/datetime like, YYYY-MM-DD
-#         日期列表
-#     :param ret_num:int
-#         返回的交易日数量
-#     :return:
-#         例如：如果要取得浦发银行过去30个交易日中的10个交易日复权分钟行情数据，那么参数设置为：
-#              code=SH600000, days为过去30个交易日列表, ret_num=10
-#     ------
-#       DataFrame
-#         0: code，个股代码，如SH600000
-#         1: time，时间，格式YYYY-MM-DD hh:mm:ss
-#         2: open，开盘价
-#         3: high，最高价
-#         4: low，最低价
-#         5: close，收盘价
-#         6: volume，成交量(手)
-#         7: amount，成交金额(元)
-#         8: factor，复权系数
-#         如果给定的日期范围内读取分钟数据天数小于ret_num天，那么be_enough=False，否则be_enough=True
-#     """
-#     # cfg = ConfigParser()
-#     # cfg.read('config.ini')
-#     # db_path = cfg.get('factor_db', 'db_path')   # 读取因子数据库路径
-#     db_path = alphafactor_ct.FACTOR_DB.db_path
-#     df_min_mkt = DataFrame()
-#     k = 0
-#     for trading_date in days:
-#         mkt_file_path = os.path.join(db_path, 'ElementaryFactor/mkt_1min_FQ/%s/%s.csv' %
-#                                      (Utils.datetimelike_to_str(trading_date), Utils.code_to_symbol(code)))
-#         if os.path.isfile(mkt_file_path):
-#             # 读取个股每天的分钟行情数据
-#             df = pd.read_csv(mkt_file_path,
-#                              names=['code', 'time', 'open', 'high', 'low', 'close', 'volume', 'amount', 'factor'],
-#                              skiprows=[0])
-#             # 计算每分钟的涨跌幅，每天第一分钟的涨跌幅=close/open-1
-#             df['ret'] = df['close'] / df['close'].shift(1) - 1.0
-#             df.ix[0, 'ret'] = df.ix[0, 'close'] / df.ix[0, 'open'] - 1.0
-#             # 拼接数据
-#             df_min_mkt = df_min_mkt.append(df, ignore_index=True)
-#             k += 1
-#             if k >= ret_num:
-#                 break
-#     be_enough = True
-#     if k < ret_num:
-#         be_enough = False
-#     return be_enough, df_min_mkt
-
-
 class SmartMoney(Factor):
     """聪明钱因子类"""
     __days = alphafactor_ct.SMARTMONEY_CT.days_num   # 读取过去多少天的分钟行情进行因子载荷计算
     _db_file = os.path.join(SETTINGS.FACTOR_DB_PATH, alphafactor_ct.SMARTMONEY_CT.db_file)   # 因子对应数据库文件名
-
-    # def __init__(self):
-    #     """
-    #     因子初始化
-    #     self.__days: 读取过去几天的分钟行情进行因子载荷计算
-    #     self._db_file: 因子对应数据库文件名
-    #     """
-    #     super(SmartMoney, self).__init__()
-    #     cfg = ConfigParser()
-    #     cfg.read('config.ini')
-    #     self.__days = cfg.getint('smartmoney', 'days_num')
-    #     self._db_file = os.path.join(cfg.get('factor_db', 'db_path'), cfg.get('smartmoney', 'db_file'))
 
     @classmethod
     def _calc_factor_loading(cls, code, calc_date):
@@ -278,14 +174,13 @@ class SmartMoney(Factor):
 
             date_label = Utils.get_trading_days(calc_date, ndays=2)[1]
             dict_factor['date'] = [date_label] * len(dict_factor['id'])
+            # 4.计算去极值标准化后的因子载荷
+            df_std_factor = Utils.normalize_data(pd.DataFrame(dict_factor), columns='factorvalue', treat_outlier=True, weight='eq')
             # 4.保存因子载荷至因子数据库
             if save:
-                # db = shelve.open(cls._db_file, flag='c', protocol=None, writeback=False)
-                # try:
-                #     db[calc_date.strftime('%Y%m%d')] = df_factor
-                # finally:
-                #     db.close()
-                Utils.factor_loading_persistent(cls._db_file, calc_date.strftime('%Y%m%d'), dict_factor)
+                # Utils.factor_loading_persistent(cls._db_file, calc_date.strftime('%Y%m%d'), dict_factor)
+                cls._save_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_factor,factor_type='raw', columns=['date', 'id', 'factorvalue'])
+                cls._save_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), df_std_factor, factor_type='standardized', columns=['date', 'id', 'factorvalue'])
             # 休息300秒
             logging.info('Suspending for 360s.')
             time.sleep(360)

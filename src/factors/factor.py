@@ -173,6 +173,28 @@ class Factor(object):
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), synthetic_factor.to_dict('list'), ['date', 'id', 'factorvalue'])
 
     @classmethod
+    def _save_factor_loading(cls, db_file, str_key, dict_factorloading, factor_type=None, columns=None):
+        """
+        保存因子载荷数据
+        Parameters:
+        --------
+        :param db_file: str
+            因子载荷数据文件(绝对路径)
+        :param str_key: str
+            持久化因子载荷时用到的key，一般为日期，格式YYYYMMDD
+        :param dict_factorloading: dict, pd.DataFrame
+            因子载荷数据
+        :param factor_type: str, 默认None
+            因子类型, e.g: 'raw', 'standardized', 'orthogonalized'
+        :param columns: sequence, 默认=None
+            输出的列，并按指定顺序输出
+        :return:
+        """
+        if factor_type is not None:
+            db_file = os.path.join(db_file, factor_type)
+        Utils.factor_loading_persistent(db_file, str_key, dict_factorloading, columns)
+
+    @classmethod
     def get_dependent_factors(cls, date):
         """
         计算用于因子提纯的相关性因子值，包换行业、规模、价值、成长、短期动量、长期动量
