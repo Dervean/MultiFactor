@@ -20,6 +20,10 @@ from src.portfolio.portfolio import CWeightHolding
 from src.alphamodel.alphafactors import *
 
 
+# TODO test_alpha_factor()
+
+# TODO _calc_alphafactor_performance()
+
 def _calc_alpahfactor_loading(start_date, end_date=None, factor_name=None, multi_proc=False):
     """
     计算alpha因子因子载荷值(原始载荷值及去极值标准化后载荷值)

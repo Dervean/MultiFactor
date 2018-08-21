@@ -173,17 +173,19 @@ class Factor(object):
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), synthetic_factor.to_dict('list'), ['date', 'id', 'factorvalue'])
 
     @classmethod
-    def _save_factor_loading(cls, db_file, str_key, dict_factorloading, factor_type=None, columns=None):
+    def _save_factor_loading(cls, db_file, str_key, dict_factorloading, factor_name=None, factor_type=None, columns=None):
         """
         保存因子载荷数据
         Parameters:
         --------
         :param db_file: str
-            因子载荷数据文件(绝对路径)
+            因子载荷数据文件路径(绝对路径)
         :param str_key: str
             持久化因子载荷时用到的key，一般为日期，格式YYYYMMDD
         :param dict_factorloading: dict, pd.DataFrame
             因子载荷数据
+        :param factor_name: str, 默认为None
+            因子名称
         :param factor_type: str, 默认None
             因子类型, e.g: 'raw', 'standardized', 'orthogonalized'
         :param columns: sequence, 默认=None
@@ -191,8 +193,43 @@ class Factor(object):
         :return:
         """
         if factor_type is not None:
-            db_file = os.path.join(db_file, factor_type)
+            db_file = os.path.join(db_file, factor_type, factor_name)
         Utils.factor_loading_persistent(db_file, str_key, dict_factorloading, columns)
+
+    @classmethod
+    def _get_factor_loading(cls, db_file, str_key, factor_name=None, factor_type=None, **kwargs):
+        """
+        读取因子载荷数据
+        Parameters:
+        --------
+        :param db_file: str
+            因子载荷数据文件路径(绝对路径)
+        :param str_key: str
+            键值, 一般为日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :param factor_name: str, 默认为None
+            因子名称
+        :param factor_type: str, 默认为None
+            因子类型, e.g: 'raw', 'standardized', 'orthogonalized'
+        :param kwargs:
+            kwargs['code']: str, 默认为None; 个股代码, e.g: SH600000, 600000
+            kwargs['nan_value']: object, 默认为None; 如果不为None, 那么缺失值用nan_value替换
+            kwargs['drop_na']: bool, 默认False; 是否删除含有NaN值的行
+        :return: pd.DataFrame or pd.Series, 因子载荷
+        --------
+            pd.DataFrame(code==None) or pd.Series(code!=None)
+            0. date
+            1. id
+            2. factorvalue
+        """
+        if factor_type is not None:
+            db_file = os.path.join(db_file, factor_type, factor_name)
+        if 'code' not in kwargs:
+            kwargs['code'] = None
+        if 'na_value' not in kwargs:
+            kwargs['na_value'] = None
+        if 'drop_na' not in kwargs:
+            kwargs['drop_na'] = False
+        return Utils.read_factor_loading(db_file, str_key, kwargs['code'], kwargs['na_value'], kwargs['drop_na'])
 
     @classmethod
     def get_dependent_factors(cls, date):

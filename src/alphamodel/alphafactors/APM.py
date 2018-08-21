@@ -6,8 +6,9 @@
 # @Email   : yujun_mail@163.com
 
 
+import src.settings as SETTINGS
 from src.factors.factor import Factor
-import src.factors.cons as factor_ct
+import src.alphamodel.alphafactors.cons as alphafactor_ct
 from src.util.utils import Utils, SecuTradingStatus
 from src.util.dataapi.CDataHandler import CDataHandler
 # from src.factors.Scale import Scale
@@ -31,8 +32,8 @@ logging.basicConfig(level=logging.INFO,
 
 class APM(Factor):
     """APM因子类"""
-    __days = factor_ct.APM_CT.days_num      # 读取过去多少天的分钟行情数据进行因子载荷计算
-    _db_file = os.path.join(factor_ct.FACTOR_DB.db_path, factor_ct.APM_CT.apm_db_file)      # 因子对应数据库文件名
+    __days = alphafactor_ct.APM_CT.days_num      # 读取过去多少天的分钟行情数据进行因子载荷计算
+    _db_file = os.path.join(SETTINGS.FACTOR_DB_PATH, alphafactor_ct.APM_CT.db_file)      # 因子对应数据库文件名
 
     @classmethod
     def _calc_factor_loading(cls, code, calc_date):
@@ -115,7 +116,7 @@ class APM(Factor):
                 r_am_array[k, 0] = fmid_close / fopen - 1.0
                 r_pm_array[k, 0] = fclose / fmid_close - 1.0
 
-                df_1min_data = Utils.get_min_mkt(factor_ct.APM_CT.index_code, trading_day, index=True, fq=True)
+                df_1min_data = Utils.get_min_mkt(alphafactor_ct.APM_CT.index_code, trading_day, index=True, fq=True)
                 fopen = df_1min_data[df_1min_data.datetime == '%s 09:31:00' % str_date].iloc[0].open
                 fmid_close = df_1min_data[df_1min_data.datetime == '%s 11:30:00' % str_date].iloc[0].close
                 fclose = df_1min_data[df_1min_data.datetime == '%s 15:00:00' % str_date].iloc[0].close
@@ -173,6 +174,8 @@ class APM(Factor):
         :param month_end: bool，默认True
             只计算月末时点的因子载荷，该参数只在end_date不为None时有效，并且不论end_date是否为None，都会计算第一天的因子载荷
         :param save: 是否保存至因子数据库，默认为False
+        :param kwargs:
+            'multi_proc': bool, True=采用多进程并行计算, False=采用单进程计算, 默认为False
         :return: 因子载荷，DataFrame
         --------
             因子载荷,DataFrame
@@ -203,28 +206,31 @@ class APM(Factor):
             ret20_lst = []
             symbol_lst = []
 
-            # 采用单进程计算
-            # for _, stock_info in stock_basics.iterrows():
-            #     stat_i = cls._calc_factor_loading(stock_info.symbol, calc_date)
-            #     ret20_i = Utils.calc_interval_ret(stock_info.symbol, end=calc_date, ndays=20)
-            #     if stat_i is not None and ret20_i is not None:
-            #         stat_lst.append(stat_i)
-            #         ret20_lst.append(ret20_i)
-            #         symbol_lst.append(Utils.code_to_symbol(stock_info.symbol))
-            #         logging.info('APM of %s = %f' % (stock_info.symbol, stat_i))
-
-            # 采用多进程并行计算
-            q = Manager().Queue()
-            p = Pool(4)     # 最多同时开启4个进程
-            for _, stock_info in stock_basics.iterrows():
-                p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
-            p.close()
-            p.join()
-            while not q.empty():
-                apm_value = q.get(True)
-                symbol_lst.append(apm_value[0])
-                stat_lst.append(apm_value[1])
-                ret20_lst.append(apm_value[2])
+            if 'multi_proc' not in kwargs:
+                kwargs['multi_proc'] = False
+            if not kwargs['multi_proc']:
+                # 采用单进程计算
+                for _, stock_info in stock_basics.iterrows():
+                    stat_i = cls._calc_factor_loading(stock_info.symbol, calc_date)
+                    ret20_i = Utils.calc_interval_ret(stock_info.symbol, end=calc_date, ndays=20)
+                    if stat_i is not None and ret20_i is not None:
+                        stat_lst.append(stat_i)
+                        ret20_lst.append(ret20_i)
+                        symbol_lst.append(Utils.code_to_symbol(stock_info.symbol))
+                        logging.info('APM of %s = %f' % (stock_info.symbol, stat_i))
+            else:
+                # 采用多进程并行计算
+                q = Manager().Queue()
+                p = Pool(4)     # 最多同时开启4个进程
+                for _, stock_info in stock_basics.iterrows():
+                    p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
+                p.close()
+                p.join()
+                while not q.empty():
+                    apm_value = q.get(True)
+                    symbol_lst.append(apm_value[0])
+                    stat_lst.append(apm_value[1])
+                    ret20_lst.append(apm_value[2])
 
             assert len(stat_lst) == len(ret20_lst)
             assert len(stat_lst) == len(symbol_lst)
@@ -248,31 +254,34 @@ class APM(Factor):
             # 2.2.2.构造APM因子字典，并持久化
             date_label = Utils.get_trading_days(calc_date, ndays=2)[1]
             dict_apm = {'date': [date_label]*len(symbol_lst), 'id': symbol_lst, 'factorvalue': apm_lst}
+            df_std_apm = Utils.normalize_data(pd.DataFrame(dict_apm), columns='factorvalue', treat_outlier=True, weight='eq')
             if save:
-                Utils.factor_loading_persistent(cls._db_file, calc_date.strftime('%Y%m%d'), dict_apm)
+                # Utils.factor_loading_persistent(cls._db_file, calc_date.strftime('%Y%m%d'), dict_apm)
+                cls._save_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_apm, 'APM', factor_type='raw', columns=['date', 'id', 'factorvalue'])
+                cls._save_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), df_std_apm, 'APM', factor_type='standardized', columns=['date', 'id', 'factorvalue'])
 
-            # 2.3.构建PureAPM因子
-            # 将stat_arr转换为DataFrame, 此时的stat_arr已经经过了去极值和标准化处理
-            df_stat = DataFrame(stat_arr, index=symbol_lst, columns=['stat'])
-            # 取得提纯的因变量因子
-            df_dependent_factor = cls.get_dependent_factors(calc_date)
-            # 将df_stat和因变量因子拼接
-            df_data = pd.concat([df_stat, df_dependent_factor], axis=1, join='inner')
-            # OLS回归，提纯APM因子
-            arr_data = np.array(df_data)
-            pure_apm_model = sm.OLS(arr_data[:, 0], arr_data[:, 1:])
-            pure_apm_result = pure_apm_model.fit()
-            pure_apm_lst = list(np.around(pure_apm_result.resid, 6))
-            pure_symbol_lst = list(df_data.index)
-            assert len(pure_apm_lst) == len(pure_symbol_lst)
-            # 构造pure_apm因子字典，并持久化
-            dict_pure_apm = {'date': [date_label]*len(pure_symbol_lst), 'id': pure_symbol_lst, 'factorvalue': pure_apm_lst}
-            pure_apm_db_file = os.path.join(factor_ct.FACTOR_DB.db_path, factor_ct.APM_CT.pure_apm_db_file)
-            if save:
-                Utils.factor_loading_persistent(pure_apm_db_file, calc_date.strftime('%Y%m%d'), dict_pure_apm)
-            # 休息360秒
-            logging.info('Suspended for 360s.')
-            time.sleep(360)
+            # # 2.3.构建PureAPM因子
+            # # 将stat_arr转换为DataFrame, 此时的stat_arr已经经过了去极值和标准化处理
+            # df_stat = DataFrame(stat_arr, index=symbol_lst, columns=['stat'])
+            # # 取得提纯的因变量因子
+            # df_dependent_factor = cls.get_dependent_factors(calc_date)
+            # # 将df_stat和因变量因子拼接
+            # df_data = pd.concat([df_stat, df_dependent_factor], axis=1, join='inner')
+            # # OLS回归，提纯APM因子
+            # arr_data = np.array(df_data)
+            # pure_apm_model = sm.OLS(arr_data[:, 0], arr_data[:, 1:])
+            # pure_apm_result = pure_apm_model.fit()
+            # pure_apm_lst = list(np.around(pure_apm_result.resid, 6))
+            # pure_symbol_lst = list(df_data.index)
+            # assert len(pure_apm_lst) == len(pure_symbol_lst)
+            # # 构造pure_apm因子字典，并持久化
+            # dict_pure_apm = {'date': [date_label]*len(pure_symbol_lst), 'id': pure_symbol_lst, 'factorvalue': pure_apm_lst}
+            # pure_apm_db_file = os.path.join(factor_ct.FACTOR_DB.db_path, factor_ct.APM_CT.pure_apm_db_file)
+            # if save:
+            #     Utils.factor_loading_persistent(pure_apm_db_file, calc_date.strftime('%Y%m%d'), dict_pure_apm)
+            # # 休息360秒
+            # logging.info('Suspended for 360s.')
+            # time.sleep(360)
         return dict_apm
 
     # @classmethod
@@ -332,9 +341,9 @@ def apm_backtest(start, end, pure_factor=False):
     # 读取截止开始日期前最新的组合回测数据
     prev_trading_day = Utils.get_prev_n_day(trading_days.iloc[0], 1)
     if pure_factor:
-        backtest_path = os.path.join(factor_ct.FACTOR_DB.db_path, factor_ct.APM_CT.pure_backtest_path)
+        backtest_path = os.path.join(alphafactor_ct.FACTOR_DB.db_path, alphafactor_ct.APM_CT.pure_backtest_path)
     else:
-        backtest_path = os.path.join(factor_ct.FACTOR_DB.db_path, factor_ct.APM_CT.backtest_path)
+        backtest_path = os.path.join(alphafactor_ct.FACTOR_DB.db_path, alphafactor_ct.APM_CT.backtest_path)
     factor_data, port_nav = Utils.get_backtest_data(backtest_path, trading_days.iloc[0])
     # factor_data = None  # 记录每次调仓时最新入选个股的APM因子信息,pd.DataFrame<date,factorvalue,id,buyprice>
     if port_nav is None:
@@ -362,9 +371,9 @@ def apm_backtest(start, end, pure_factor=False):
                 nav *= (1.0 + interval_ret)
             # 读取factor_data
             if pure_factor:
-                factor_data_path = os.path.join(factor_ct.FACTOR_DB.db_path, factor_ct.APM_CT.pure_apm_db_file)
+                factor_data_path = os.path.join(alphafactor_ct.FACTOR_DB.db_path, alphafactor_ct.APM_CT.pure_apm_db_file)
             else:
-                factor_data_path = os.path.join(factor_ct.FACTOR_DB.db_path, factor_ct.APM_CT.apm_db_file)
+                factor_data_path = os.path.join(alphafactor_ct.FACTOR_DB.db_path, alphafactor_ct.APM_CT.apm_db_file)
             factor_data = Utils.read_factor_loading(factor_data_path, Utils.datetimelike_to_str(prev_trading_day, False))
             # 遍历factor_data，剔除在调仓日没有正常交易（如停牌）、及涨停的个股
             ind_to_be_delted = []
@@ -388,10 +397,10 @@ def apm_backtest(start, end, pure_factor=False):
             nav *= (1.0 + interval_ret)
             # 保存factor_data
             if pure_factor:
-                port_data_path = os.path.join(factor_ct.FACTOR_DB.db_path, factor_ct.APM_CT.pure_backtest_path,
+                port_data_path = os.path.join(alphafactor_ct.FACTOR_DB.db_path, alphafactor_ct.APM_CT.pure_backtest_path,
                                               'port_data_%s.csv' % Utils.datetimelike_to_str(trading_day, False))
             else:
-                port_data_path = os.path.join(factor_ct.FACTOR_DB.db_path, factor_ct.APM_CT.backtest_path,
+                port_data_path = os.path.join(alphafactor_ct.FACTOR_DB.db_path, alphafactor_ct.APM_CT.backtest_path,
                                               'port_data_%s.csv' % Utils.datetimelike_to_str(trading_day, False))
             factor_data.to_csv(port_data_path, index=False)
         else:
@@ -409,9 +418,9 @@ def apm_backtest(start, end, pure_factor=False):
         prev_trading_day = trading_day
     # 保存port_nav
     if pure_factor:
-        port_nav_path = os.path.join(factor_ct.FACTOR_DB.db_path, factor_ct.APM_CT.pure_backtest_path, 'port_nav.csv')
+        port_nav_path = os.path.join(alphafactor_ct.FACTOR_DB.db_path, alphafactor_ct.APM_CT.pure_backtest_path, 'port_nav.csv')
     else:
-        port_nav_path = os.path.join(factor_ct.FACTOR_DB.db_path, factor_ct.APM_CT.backtest_path, 'port_nav.csv')
+        port_nav_path = os.path.join(alphafactor_ct.FACTOR_DB.db_path, alphafactor_ct.APM_CT.backtest_path, 'port_nav.csv')
     port_nav.to_csv(port_nav_path, index=False)
 
 

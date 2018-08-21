@@ -176,11 +176,11 @@ class SmartMoney(Factor):
             dict_factor['date'] = [date_label] * len(dict_factor['id'])
             # 4.计算去极值标准化后的因子载荷
             df_std_factor = Utils.normalize_data(pd.DataFrame(dict_factor), columns='factorvalue', treat_outlier=True, weight='eq')
-            # 4.保存因子载荷至因子数据库
+            # 5.保存因子载荷至因子数据库
             if save:
                 # Utils.factor_loading_persistent(cls._db_file, calc_date.strftime('%Y%m%d'), dict_factor)
-                cls._save_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_factor,factor_type='raw', columns=['date', 'id', 'factorvalue'])
-                cls._save_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), df_std_factor, factor_type='standardized', columns=['date', 'id', 'factorvalue'])
+                cls._save_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_factor, 'SmartMoney', factor_type='raw', columns=['date', 'id', 'factorvalue'])
+                cls._save_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), df_std_factor, 'SmartMoney', factor_type='standardized', columns=['date', 'id', 'factorvalue'])
             # 休息300秒
             logging.info('Suspending for 360s.')
             time.sleep(360)
