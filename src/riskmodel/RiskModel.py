@@ -351,6 +351,7 @@ class Barra(object):
                     df_residual_ret.to_csv(residual_ret_path)
             elif isinstance(data, pd.DataFrame):
                 if df_residual_ret is None:
+                    df_residual_ret = data
                     df_residual_ret.to_csv(residual_ret_path)
                 else:
                     dates = [d for d in data.index if d in df_residual_ret.index]

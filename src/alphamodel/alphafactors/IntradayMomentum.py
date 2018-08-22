@@ -18,6 +18,7 @@ import numpy as np
 import os
 import math
 import datetime
+import calendar
 import logging
 from multiprocessing import Pool, Manager
 import time
@@ -231,34 +232,41 @@ class IntradayMomentum(Factor):
 
             date_label = Utils.get_trading_days(calc_date, ndays=2)[1]
             dict_intraday_momentum['date'] = [date_label] * len(dict_intraday_momentum['id'])
+
             # 保存因子载荷至因子数据库
             if save:
                 # Utils.factor_loading_persistent(cls._db_file, calc_date.strftime('%Y%m%d'), dict_intraday_momentum)
                 cls._save_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_intraday_momentum, 'periodmomentum', factor_type='raw')
 
+            # 计算日内各时段动量因子的Rank IC值向量, 并保存
+            cls._calc_periodmomentum_ic(calc_date, 'month')
+
+            # 计算最优化权重
+            if alphafactor_ct.INTRADAYMOMENTUM_CT['optimized']:
+                cls._optimize_periodmomentum_weight(calc_date)
+
             # 计算合成日内动量因子
             if alphafactor_ct.INTRADAYMOMENTUM_CT['synthesized']:
-                logging.info(
-                    '[%s] calc synthetic intraday momentum factor loading.' % Utils.datetimelike_to_str(calc_date))
+                logging.info('[%s] calc synthetic intraday momentum factor loading.' % Utils.datetimelike_to_str(calc_date))
                 dict_intraday_momentum = {'date': [], 'id': [], 'factorvalue': []}
                 # 读取日内个时段动量因子值
-                period_momentum_path = os.path.join(SETTINGS.FACTOR_DB_PATH, alphafactor_ct.INTRADAYMOMENTUM_CT.db_file, 'raw/periodmomentum')
-                df_factor_loading = Utils.read_factor_loading(period_momentum_path, Utils.datetimelike_to_str(calc_date, False))
+                # period_momentum_path = os.path.join(SETTINGS.FACTOR_DB_PATH, alphafactor_ct.INTRADAYMOMENTUM_CT.db_file, 'raw/periodmomentum')
+                # df_factor_loading = Utils.read_factor_loading(period_momentum_path, Utils.datetimelike_to_str(calc_date, False))
+                df_factor_loading = cls._get_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), factor_name='periodmomentum', factor_type='raw', drop_na=False)
                 if df_factor_loading.shape[0] <= 0:
-                    logging.info("[%s] It doesn't exist intraday momentum factor loading." % Utils.datetimelike_to_str(
-                        calc_date))
+                    logging.info("[%s] It doesn't exist intraday momentum factor loading." % Utils.datetimelike_to_str(calc_date))
                     return
                 df_factor_loading.fillna(0, inplace=True)
                 # 读取因子最优权重
-                factor_weight = cls.get_factor_weight(calc_date)
+                factor_weight = cls._get_factor_weight(calc_date)
                 if factor_weight is None:
                     logging.info("[%s] It doesn't exist factor weight.")
                     return
-                # 计算合成动量因子
+                # 计算合成动量因子, 合成之前先对日内各时段动量因子进行去极值和标准化处理
                 arr_factor_loading = np.array(df_factor_loading[['m0', 'm1', 'm2', 'm3', 'm4']])
+                arr_factor_loading = Utils.normalize_data(arr_factor_loading, treat_outlier=True)
                 arr_factor_weight = np.array(factor_weight.drop('date')).reshape((5, 1))
                 arr_synthetic_factor = np.dot(arr_factor_loading, arr_factor_weight)
-                # arr_synthetic_factor = np.around(arr_synthetic_factor, 6)
                 dict_intraday_momentum['date'] = list(df_factor_loading['date'])
                 dict_intraday_momentum['id'] = list(df_factor_loading['id'])
                 dict_intraday_momentum['factorvalue'] = list(arr_synthetic_factor.astype(float).round(6).reshape((arr_synthetic_factor.shape[0],)))
@@ -276,13 +284,14 @@ class IntradayMomentum(Factor):
         return dict_intraday_momentum
 
     @classmethod
-    def get_factor_weight(cls, date):
+    def _get_factor_weight(cls, date=None):
         """
         取得日内各时点动量因子的权重
         --------
         :param date: datetime-like or str
-            日期
-        :return: pd.Series
+            日期, 默认为None
+            如果date=None, 返回全部权重数据
+        :return: pd.Series, pd.DataFrame
             各时点权重信息
         --------
             0. date: 日期
@@ -293,20 +302,83 @@ class IntradayMomentum(Factor):
             5. w4: 第五个时点动量因子的权重
             读取不到数据，返回None
         """
-        date = Utils.to_date(date)
+
         weight_file_path = os.path.join(SETTINGS.FACTOR_DB_PATH, alphafactor_ct.INTRADAYMOMENTUM_CT.optimal_weight_file)
+        if not os.path.isfile(weight_file_path):
+            return None
         df_optimal_weight = pd.read_csv(weight_file_path, parse_dates=[0], header=0)
         df_optimal_weight.sort_values(by='date', inplace=True)
-        df_optimal_weight = df_optimal_weight[df_optimal_weight.date <= date]
-        if df_optimal_weight.shape[0] > 0:
-            return df_optimal_weight.iloc[-1]
+
+        if date is None:
+            if df_optimal_weight.empty:
+                return None
+            else:
+                return df_optimal_weight
         else:
-            return None
+            date = Utils.to_date(date)
+            df_weight = df_optimal_weight[df_optimal_weight.date <= date]
+            if df_weight.shape[0] > 0:
+                return df_weight.iloc[-1]
+            else:
+                df_weight = df_optimal_weight[df_optimal_weight.date >= date]
+                if df_weight.shape[0] > 0:
+                    return df_weight.iloc[0]
+                else:
+                    return None
+
+    @classmethod
+    def _save_factor_weight(cls, weight_data, save_type='a'):
+        """
+        保存日内各时点动量因子的权重数据
+        Parameters:
+        --------
+        :param weight_data: pd.Series, pd.DataFrame
+            权重数据, columns=['date', 'w0', 'w1', 'w2', 'w3', 'w4']
+        :param save_type: str
+            保存方式, 'a'=新增, 'w'=覆盖, 默认为'a'
+        :return:
+        """
+        # TODO 该方法弃用, 改用utils.save_timeseries_data()接口
+        factor_weight_path = os.path.join(SETTINGS.FACTOR_DB_PATH, alphafactor_ct.INTRADAYMOMENTUM_CT['optimal_weight_file'])
+        if save_type == 'a':
+            df_optimal_weight = cls._get_factor_weight()
+            if isinstance(weight_data, pd.Series):
+                if df_optimal_weight is None:
+                    df_optimal_weight = pd.DataFrame().append(weight_data, ignore_index=True)
+                else:
+                    if weight_data['date'] in df_optimal_weight['date'].values:
+                        idx = df_optimal_weight[df_optimal_weight['date']==weight_data['date']].index
+                        df_optimal_weight.drop(index=idx, inplace=True)
+                    df_optimal_weight = df_optimal_weight.append(weight_data, ignore_index=True)
+                    df_optimal_weight.sort_values(by='date', inplace=True)
+            elif isinstance(weight_data, pd.DataFrame):
+                if df_optimal_weight is None:
+                    df_optimal_weight = weight_data
+                else:
+                    dates = set(df_optimal_weight['date']).intersection(set(weight_data['date']))
+                    if len(dates) > 0:
+                        df_optimal_weight.set_index('date', inplace=True)
+                        df_optimal_weight.drop(index=dates, inplace=True)
+                        df_optimal_weight.reset_index(inplace=True)
+                    df_optimal_weight = df_optimal_weight.append(weight_data, ignore_index=True)
+                    df_optimal_weight.sort_values(by='date', inplace=True)
+            else:
+                raise TypeError("参数weight_data类型必须为pd.Series或pd.DataFrame.")
+            df_optimal_weight.to_csv(factor_weight_path, index=False)
+        elif save_type == 'w':
+            if isinstance(weight_data, pd.Series):
+                pd.DataFrame().append(weight_data, ignore_index=True).to_csv(factor_weight_path, index=False)
+            elif isinstance(weight_data, pd.DataFrame):
+                weight_data.to_csv(factor_weight_path, index=False)
+            else:
+                raise TypeError("参数weight_data类型必须为pd.Series或pd.DataFrame.")
+        else:
+            raise ValueError("保存类型应该为'a'=新增, 'w'=覆盖.")
 
     @classmethod
     def _calc_periodmomentum_ic(cls, calc_date, date_interval_type='month'):
         """
-        计算日内各时段动量因子的IC值向量
+        计算日内各时段动量因子的Rank IC值向量
         Parameters:
         --------
         :param calc_date: datetime-like, str
@@ -323,13 +395,34 @@ class IntradayMomentum(Factor):
             4. IC3, 第3小时动量因子IC
             5. IC4, 第4小时动量因子IC
         """
-        # TODO 计算日内各时段动量因子的IC值向量
         # 读取日内各时段动量因子载荷数据
         df_period_mom = cls._get_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False),
                                                 factor_name='periodmomentum', factor_type='raw', drop_na=True)
         if df_period_mom.empty:
             return None
 
+        if date_interval_type == 'month':
+            # 读取个股下个月的月度收益率数据
+            ret_start, ret_end = Utils.next_month(calc_date)
+        elif date_interval_type == 'day':
+            ret_start = ret_end = Utils.get_trading_days(start=calc_date, ndays=2)[1]
+
+        df_period_mom['ret'] = np.nan
+        for idx, factorloading_data in df_period_mom.iterrows():
+            fret = Utils.calc_interval_ret(factorloading_data['id'], start=ret_start, end=ret_end)
+            if fret is not None:
+                df_period_mom.loc[idx, 'ret'] = fret
+        df_period_mom.dropna(inplace=True)
+        # 计算Rank IC值
+        df_period_mom.drop(columns=['date', 'id', 'm_normal'], inplace=True)
+        df_spearman_corr = df_period_mom.corr(method='spearman')
+        rank_IC = df_spearman_corr.loc['ret', ['m0', 'm1', 'm2', 'm3', 'm4']]
+        rank_IC['date'] = calc_date
+        # 保存Rank IC值
+        ic_filepath = os.path.join(SETTINGS.FACTOR_DB_PATH, alphafactor_ct.INTRADAYMOMENTUM_CT['factor_ic_file'])
+        Utils.save_timeseries_data(rank_IC, ic_filepath, save_type='a', columns=['date', 'm0', 'm1', 'm2', 'm3', 'm4'])
+
+        return rank_IC
 
     @classmethod
     def _optimize_periodmomentum_weight(cls, calc_date):
@@ -342,15 +435,31 @@ class IntradayMomentum(Factor):
         :return: pd.Series
         --------
             日内各时段动量因子载荷的优化权重向量
-            0. date, 日期
+            0. date, 日期, datetimelike
             1. w0, 隔夜时段动量因子权重
             2. w1, 第1小时动量因子权重
             3. w2, 第2小时动量因子权重
             4. w3, 第3小时动量因子权重
             5. w4, 第4小时动量因子权重
         """
-        # TODO 优化计算日内各时段动量因子载荷的权重
-
+        calc_date = Utils.to_date(calc_date)
+        # 读取过去60个月日内各时段动量因子IC时间序列值
+        ic_filepath = os.path.join(SETTINGS.FACTOR_DB_PATH, alphafactor_ct.INTRADAYMOMENTUM_CT['factor_ic_file'])
+        df_ic = pd.read_csv(ic_filepath, header=0, parse_dates=[0])
+        df_ic = df_ic[df_ic['date'] <= calc_date].iloc[-60:]
+        # 计算IC的均值和协方差矩阵
+        df_ic.drop(columns='date', inplace=True)
+        ic_mean = np.mat(df_ic.mean(axis=0)).reshape((df_ic.shape[1], 1))
+        ic_cov = np.mat(df_ic.cov())
+        # 计算日内时段因子的最优权重
+        optimal_weights = ic_cov.I * ic_mean
+        optimal_weights /= optimal_weights.sum()
+        optimal_weights = np.array(optimal_weights).flatten().tolist()
+        optimal_weights.insert(0, calc_date)
+        optimal_weights = pd.Series(optimal_weights, index=['date', 'w0', 'w1', 'w2', 'w3', 'w4'])
+        # 保存最优权重
+        weight_filepath = os.path.join(SETTINGS.FACTOR_DB_PATH, alphafactor_ct.INTRADAYMOMENTUM_CT['optimal_weight_file'])
+        Utils.save_timeseries_data(optimal_weights, weight_filepath, save_type='a', columns=['date', 'w0', 'w1', 'w2', 'w3', 'w4'])
 
 def mom_backtest(start, end):
     """

@@ -353,6 +353,28 @@ class Utils(object):
                 return True
 
     @classmethod
+    def next_month(cls, date):
+        """
+        计算给定日期的下个月月初和月末日期
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :return: tuple(datetime.date, datetime.date)
+        --------
+            返回一个元组, 包含下个月月初和月末日期
+        """
+        date = cls.to_date(date)
+        if date.month == 12:
+            year = date.year + 1
+            month = 1
+        else:
+            year = date.year
+            month = date.month + 1
+        _, days_num = calendar.monthrange(year, month)
+        return datetime.date(year, month, 1), datetime.date(year, month, days_num)
+
+    @classmethod
     def get_secu_daily_mkt(cls, secu_code, start=None, end=None, ndays=None,fq=False, range_lookup=False):
         """
         读取证券的日行情数据
@@ -1140,6 +1162,68 @@ class Utils(object):
         if drop_na:
             df_factor_loading.dropna(axis=0, how='any', inplace=True)
         return df_factor_loading
+
+    @classmethod
+    def save_timeseries_data(cls, timeseries_data, data_file_path, save_type='a', columns=None):
+        """
+        保存时间序列数据
+        Parameters:
+        --------
+        :param timeseries_data: pd.Series, pd.DataFrame
+            时间序列数据, index 或 column中含有'date'项
+        :param data_file_path: str
+            数据文件路径
+        :param save_type: str
+            保存方式, 'a'=新增, 'w'=覆盖, 默认为'a'
+        :param columns: list
+            需要保存的列名
+        :return:
+        """
+        if timeseries_data.empty:
+            return
+
+        if save_type == 'a':
+            if not os.path.isfile(data_file_path):
+                df_timeseries_data = None
+            else:
+                df_timeseries_data = pd.read_csv(data_file_path, parse_dates=[0], header=0)
+                if df_timeseries_data.empty():
+                    df_timeseries_data = None
+                else:
+                    df_timeseries_data.sort_values(by='date', inplace=True)
+
+            if isinstance(timeseries_data, pd.Series):
+                if df_timeseries_data is None:
+                    df_timeseries_data = pd.DataFrame().append(timeseries_data, ignore_index=True)
+                else:
+                    if timeseries_data['date'] in df_timeseries_data['date'].values:
+                        idx = df_timeseries_data[df_timeseries_data['date']==timeseries_data['date']].index
+                        df_timeseries_data.drop(index=idx, inplace=True)
+                    df_timeseries_data = df_timeseries_data.append(timeseries_data, ignore_index=True)
+                    df_timeseries_data.sort_values(by='date', inplace=True)
+            elif isinstance(timeseries_data, pd.DataFrame):
+                if df_timeseries_data is None:
+                    df_timeseries_data = timeseries_data
+                else:
+                    dates = set(df_timeseries_data['date']).intersection(set(timeseries_data['date']))
+                    if len(dates) > 0:
+                        df_timeseries_data.set_index('date', inplace=True)
+                        df_timeseries_data.drop(index=dates, inplace=True)
+                        df_timeseries_data.reset_index(inplace=True)
+                    df_timeseries_data = df_timeseries_data.append(timeseries_data, ignore_index=True)
+                    df_timeseries_data.sort_values(by='date', inplace=True)
+            else:
+                raise TypeError("参数timeseries_data类型必须为pd.Series或pd.DataFrame.")
+            df_timeseries_data.to_csv(data_file_path, index=False, columns=columns)
+        elif save_type == 'w':
+            if isinstance(timeseries_data, pd.Series):
+                pd.DataFrame().append(timeseries_data, ignore_index=True).to_csv(data_file_path, index=False, columns=columns)
+            elif isinstance(timeseries_data, pd.DataFrame):
+                timeseries_data.to_csv(data_file_path, index=False, columns=columns)
+            else:
+                raise TypeError("参数timeseries_data类型必须为pd.Series或pd.DataFrame.")
+        else:
+            raise ValueError("保存类型必须为a'=新增, 'w'=覆盖.")
 
     @classmethod
     def clean_extreme_value(cls, arr_data, method='MAD'):

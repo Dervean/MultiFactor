@@ -20,11 +20,33 @@ from src.portfolio.portfolio import CWeightHolding
 from src.alphamodel.alphafactors import *
 
 
-# TODO test_alpha_factor()
+def test_alpha_factor(factor_name, start_date, end_date):
+    """
+    alpha因子检验
+    Parameters:
+    --------
+    :param factor_name: str
+        因子名称, e.g: SmartMoney
+    :param start_date: datetime-like, str
+        开始日期, e.g: YYYY-MM-DD, YYYYMMDD
+    :param end_date: datetime-like, str
+        结束日期, e.g: YYYY-MM-DD, YYYYMMDD
+    :return:
+    --------
+    """
+    # 计算因子载荷值
+    _calc_alphafactor_loading(start_date=start_date, end_date=end_date, factor_name=factor_name, multi_proc=SETTINGS.CONCURRENCY_ON, test=True)
+
+    # 计算因子正交化后的因子载荷
+    _calc_Orthogonalized_factorloading(factor_name=factor_name, start_date=start_date, end_date=end_date, month_end=True, save=True)
+
+    # 计算最小波动纯因子组合
+    _calc_MVPFP(factor_name=factor_name, start_date=start_date, end_date=end_date, month_end=True, save=True)
 
 # TODO _calc_alphafactor_performance()
 
-def _calc_alpahfactor_loading(start_date, end_date=None, factor_name=None, multi_proc=False):
+
+def _calc_alphafactor_loading(start_date, end_date=None, factor_name=None, multi_proc=False, test=False):
     """
     计算alpha因子因子载荷值(原始载荷值及去极值标准化后载荷值)
     Parameters:
@@ -38,6 +60,8 @@ def _calc_alpahfactor_loading(start_date, end_date=None, factor_name=None, multi
         factor_namea为None时, 计算所有alpha因子载荷值; 不为None时, 计算指定alpha因子的载荷值
     :param multi_proc: bool, 默认为None
         是否进行并行计算
+    :param test: bool, 默认为False
+        是否是进行因子检验
     :return: 保存因子载荷值(原始载荷值及去极值标准化后的载荷值)
     """
     # param_cons = eval('alphafactor_ct.'+factor_name.upper() + '_CT')
@@ -54,12 +78,10 @@ def _calc_alpahfactor_loading(start_date, end_date=None, factor_name=None, multi
                 CAlphaFactor = eval(alphafactor_name+'()')
                 CAlphaFactor.calc_factor_loading(calc_date, month_end=True, save=True, multi_proc=multi_proc)
         else:
-            if factor_name in alphafactor_ct.ALPHA_FACTORS:
-                CAlphaFactor = eval(factor_name + '()')
-                CAlphaFactor.calc_factor_loading(calc_date, month_end=True, save=True, multi_proc=multi_proc)
-            else:
+            if (not test) and (factor_name not in alphafactor_ct.ALPHA_FACTORS):
                 raise ValueError("alpha因子类: %s, 不存在." % factor_name)
-
+            CAlphaFactor = eval(factor_name + '()')
+            CAlphaFactor.calc_factor_loading(calc_date, month_end=True, save=True, multi_proc=multi_proc)
 
 def _calc_Orthogonalized_factorloading(factor_name, start_date, end_date=None, month_end=True, save=False):
     """
