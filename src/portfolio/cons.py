@@ -9,8 +9,11 @@
 # 投资组合持仓数据的相对路径
 PORTFOLIO_HOLDING_PATH = 'portfolio/holdings'
 
-# WeightHolding类持仓数据中的columns
+# CWeightHolding类持仓数据中的columns
 WEIGHTHOLDING_DATA_HEADER = ['date', 'code', 'weight']
+
+# CPortHolding类持仓数据中的columns
+PORTHOLDING_DATA_HEADER = ['date', 'code', 'volume', 'value', 'weight']
 
 if __name__ == '__main__':
     pass
