@@ -10,6 +10,7 @@ import os
 import csv
 import datetime
 import pandas as pd
+import numpy as np
 from src.util.utils import Utils, SecuTradingStatus
 import src.settings as SETTINGS
 
@@ -274,6 +275,8 @@ def calc_suspension_info(date):
         计算日期, e.g: YYYY-MM-DD, YYYYMMDD
     :return:
     """
+    # TODO 可以更改为从tushare.pro接口取得个股停牌信息
+
     date = Utils.to_date(date)
     df_stock_basics = Utils.get_stock_basics(date)
     df_stock_basics['trading_status'] = df_stock_basics.apply(lambda x: Utils.trading_status(x['symbol'], date), axis=1)
@@ -285,6 +288,42 @@ def calc_suspension_info(date):
     suspension_info_path = os.path.join(SETTINGS.FACTOR_DB_PATH, cfg.get('suspension_info', 'info_path'), '{}.csv'.format(Utils.datetimelike_to_str(date, dash=False)))
     df_stock_basics.to_csv(suspension_info_path, index=False, encoding='utf-8')
 
+def calc_future_ret(date, ndays):
+    """
+    计算date日期ndays个交易日前个股的未来1至ndays天的各个区间收益率数据
+    Parameters:
+    --------
+    :param date: datetime-like, str
+        日期, e.g: YYYY-MM-DD, YYYYMMDD
+    :param ndays: int
+        天数
+    :return:
+    """
+    # 读取过去ndays+1个交易日序列
+    trading_days_series = Utils.get_trading_days(end=date, ndays=ndays+1)
+    # 读取个股基本信息
+    stock_basics = Utils.get_stock_basics(trading_days_series[0])
+    # 从第2天开始遍历trading_days_series, 计算各个区间收益率数据
+    headers = ['code'] + ['day'+str(k) for k in range(1, ndays+1)]
+    df_future_ret = pd.DataFrame(columns=headers)
+    for _, stock_info in stock_basics.iterrows():
+        future_ret = pd.Series()
+        future_ret['code'] = stock_info.symbol
+        for k in range(1, ndays+1):
+            future_ret['day'+str(k)] = Utils.calc_interval_ret(stock_info.symbol, start=trading_days_series[1], end=trading_days_series[k])
+            if future_ret['day'+str(k)] is None:
+                future_ret['day'+str(k)] = np.nan
+            else:
+                future_ret['day' + str(k)] = round(future_ret['day' + str(k)], 6)
+        df_future_ret = df_future_ret.append(future_ret, ignore_index=True)
+        df_future_ret.dropna(axis=0, how='any', inplace=True)
+
+    # 保存数据
+    cfg = ConfigParser()
+    cfg.read('config.ini')
+    future_ret_path = os.path.join(SETTINGS.FACTOR_DB_PATH, cfg.get('future_ret', 'ret_path'), '{}.csv'.format(Utils.datetimelike_to_str(trading_days_series[0], dash=False)))
+    df_future_ret.to_csv(future_ret_path, index=False, encoding='utf-8')
+
 if __name__ == '__main__':
     pass
     # load_mkt_1min('2007', 'Y')
@@ -292,3 +331,5 @@ if __name__ == '__main__':
     # load_mkt_daily(is_one_day=True, str_date='2018-01-12', is_index_data=False)
 
     # calc_suspension_info('2015-01-05')
+
+    calc_future_ret('2018-06-29', 5)

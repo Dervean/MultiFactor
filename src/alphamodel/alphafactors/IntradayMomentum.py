@@ -183,7 +183,7 @@ class IntradayMomentum(Factor):
             trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
-        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
+        # all_stock_basics = CDataHandler.DataApi.get_secu_basics()
         # 遍历交易日序列，计算日内动量因子值
         dict_intraday_momentum = None
         for calc_date in trading_days_series:
@@ -195,7 +195,7 @@ class IntradayMomentum(Factor):
                                       'm2': [], 'm3': [], 'm4': [], 'm_normal': []}
             # 遍历个股，计算个股日内动量值
             s = (calc_date - datetime.timedelta(days=90)).strftime('%Y%m%d')
-            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            stock_basics = Utils.get_stock_basics(s)
 
             if 'multi_proc' not in kwargs:
                 kwargs['multi_proc'] = False

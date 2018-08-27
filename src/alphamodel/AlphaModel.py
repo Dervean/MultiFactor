@@ -11,12 +11,14 @@ import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 import cvxpy as cvx
+import datetime
 import src.settings as SETTINGS
 import src.alphamodel.alphafactors.cons as alphafactor_ct
 import src.riskmodel.riskfactors.cons as riskfactor_ct
+import src.alphamodel.cons as alphamodel_ct
 from src.util.utils import Utils
 from src.riskmodel.RiskModel import Barra
-from src.portfolio.portfolio import CWeightHolding
+from src.portfolio.portfolio import CWeightHolding, CPortfolio
 from src.alphamodel.alphafactors import *
 
 
@@ -42,8 +44,6 @@ def test_alpha_factor(factor_name, start_date, end_date):
 
     # 计算最小波动纯因子组合
     _calc_MVPFP(factor_name=factor_name, start_date=start_date, end_date=end_date, month_end=True, save=True)
-
-# TODO _calc_alphafactor_performance()
 
 
 def _calc_alphafactor_loading(start_date, end_date=None, factor_name=None, multi_proc=False, test=False):
@@ -82,6 +82,7 @@ def _calc_alphafactor_loading(start_date, end_date=None, factor_name=None, multi
                 raise ValueError("alpha因子类: %s, 不存在." % factor_name)
             CAlphaFactor = eval(factor_name + '()')
             CAlphaFactor.calc_factor_loading(calc_date, month_end=True, save=True, multi_proc=multi_proc)
+
 
 def _calc_Orthogonalized_factorloading(factor_name, start_date, end_date=None, month_end=True, save=False):
     """
@@ -174,6 +175,7 @@ def _calc_Orthogonalized_factorloading(factor_name, start_date, end_date=None, m
 
     return orthog_factorloading
 
+
 def _get_factorloading(factor_name, date, factor_type):
     """
     读取个股因子载荷数据
@@ -201,7 +203,7 @@ def _get_factorloading(factor_name, date, factor_type):
 
 def _calc_MVPFP(factor_name, start_date, end_date=None, month_end=True, save=False):
     """
-    构建目标因子的最小波动纯因子组合
+    构建目标因子的最小波动纯因子组合(Minimum Volatility Pure Factor Portfolio, MVPFP)
     Parameters:
     --------
     :param factor_name: str
@@ -282,6 +284,96 @@ def _calc_MVPFP(factor_name, start_date, end_date=None, month_end=True, save=Fal
 
     return mvpfp_holding
 
+
+# TODO _calc_alphafactor_performance()
+def _calc_mvpfp_performance(factor_name, start_date, end_date):
+    """
+    计算最小波动纯因子组合的绩效
+    Parameters:
+    --------
+    :param factor_name: str
+        因子名称, e.g: SmartMoney
+    :param start_date: datetime-like, str
+        开始日期, e.g: YYYY-MM-DD, YYYYMMDD
+    :param end_date: datetime-like, str
+        结束日期, e.g: YYYY-MM-DD, YYYYMMDD
+    :return:
+    """
+    start_date = Utils.to_date(start_date)
+    end_date = Utils.to_date(end_date)
+    # 读取mvpfp组合持仓数据, 构建Portfolio
+    mvpfp_path = os.path.join(SETTINGS.FACTOR_DB_PATH, eval('alphafactor_ct.'+factor_name.upper()+'.CT')['db_file'], 'mvpfp')
+    if not os.path.isdir(mvpfp_path):
+        raise NotADirectoryError("%s因子的mvpfp组合文件夹不存在.")
+    mvpfp_port = CPortfolio('weight_holding')
+    for mvpfp_filename in os.listdir(mvpfp_path):
+        if os.path.splitext(mvpfp_filename)[1] != '.csv':
+            continue
+        mvpfp_date = Utils.to_date(mvpfp_filename.split('.')[0])
+        if mvpfp_date < start_date or mvpfp_date > end_date:
+            continue
+        mvpfp_filepath = os.path.join(mvpfp_path, mvpfp_filename)
+        mvpfp_port.load_holdings_fromfile(mvpfp_filepath)
+    # 遍历持仓数据, 计算组合绩效
+    df_daily_performance = pd.DataFrame(columns=alphamodel_ct.FACTOR_PERFORMANCE_HEADER['daily_performance'])
+    df_daily_performance.loc[0, 'port_daily_ret'] = 0.0
+    df_daily_performance.loc[0, 'bnk_daily_ret'] = 0.0
+    df_daily_performance.loc[0, 'hedge_daily_ret'] = 0.0
+    df_daily_performance.loc[0, 'port_nav'] = 1.0
+    df_daily_performance.loc[0, 'bnk_nav'] = 1.0
+    df_daily_performance.loc[0, 'hedge_nav'] = 1.0
+    df_daily_performance.loc[0, 'port_accu_ret'] = 0.0
+    df_daily_performance.loc[0, 'bnk_accu_ret'] = 0.0
+    df_daily_performance.loc[0, 'hedge_accu_ret'] = 0.0
+    mvpfp_holdings = mvpfp_port.holdings
+    prev_holdingdate = curr_holding_date = None
+    holding_dates = list(mvpfp_holdings.keys())
+    df_daily_performance.loc[0, 'date'] = holding_dates[0]
+    if end_date > holding_dates[-1]:
+        holding_dates += [end_date]
+    mvpfp_daily_performance = pd.Series(index=alphamodel_ct.FACTOR_PERFORMANCE_HEADER['daily_performance'])
+    for holding_date in holding_dates:
+        prev_holdingdate = curr_holding_date
+        curr_holding_date = holding_date
+        if prev_holdingdate is None:
+            continue
+        holding_data = mvpfp_holdings[prev_holdingdate]
+        trading_days_series = Utils.get_trading_days(start=prev_holdingdate+datetime.timedelta(days=1), end=curr_holding_date)
+        for calc_date in trading_days_series:
+            mvpfp_daily_performance['date'] = calc_date
+            daily_ret = 0
+            for _, holding in holding_data.holding.iterrows():
+                ret = Utils.calc_interval_ret(holding['code'], start=trading_days_series[0], end=calc_date)
+                if ret is not None:
+                    daily_ret += ret * holding['weight']
+            mvpfp_daily_performance['port_daily_ret'] = daily_ret
+            mvpfp_daily_performance['bnk_daily_ret'] = Utils.calc_interval_ret(alphamodel_ct.BENCHMARK, start=trading_days_series[0], end=calc_date)
+            mvpfp_daily_performance['hedge_daily_ret'] = mvpfp_daily_performance['port_daily_ret'] - mvpfp_daily_performance['bnk_daily_ret']
+
+            df_daily_performance = df_daily_performance.append(mvpfp_daily_performance, ignore_index=True)
+
+    for k in range(1, len(df_daily_performance)):
+        df_daily_performance.loc[k, 'port_nav'] = df_daily_performance.loc[k-1, 'port_nav'] * (1 + df_daily_performance.loc[k, 'port_daily_ret'])
+        df_daily_performance.loc[k, 'bkn_nav'] = df_daily_performance.loc[k-1, 'bnk_nav'] * (1 + df_daily_performance.loc[k, 'bnk_daily_ret'])
+        df_daily_performance.loc[k, 'hedge_nav'] = df_daily_performance.loc[k-1, 'hedge_nav'] * (1 + df_daily_performance.loc[k, 'hedge_daily_ret'])
+        df_daily_performance.loc[k, 'port_accu_ret'] = df_daily_performance.loc[k, 'port_nav'] - 1
+        df_daily_performance.loc[k, 'bnk_accu_ret'] = df_daily_performance.loc[k, 'bnk_nav'] - 1
+        df_daily_performance.loc[k, 'hedge_accu_ret'] = df_daily_performance.loc[k, 'hedge_nav'] - 1
+
+
+# TODO _save_mvpfp_performance()
+def _save_mvpfp_performance(performance_data, performance_filepath, performance_type, save_type):
+    """
+    保存最小波动纯因子组合的绩效数据
+    Parameters:
+    --------
+    :param performance_data: pd.DataFrame
+        绩效数据
+    :param performance_filepath:
+    :param performance_type:
+    :param save_type:
+    :return:
+    """
 
 
 if __name__ == '__main__':

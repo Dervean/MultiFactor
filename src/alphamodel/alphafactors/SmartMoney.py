@@ -130,7 +130,7 @@ class SmartMoney(Factor):
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
         # 取得样本个股信息
-        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
+        # all_stock_basics = CDataHandler.DataApi.get_secu_basics()
         # 遍历交易日序列，计算SMartQ因子载荷
         dict_factor = None
         for calc_date in trading_days_series:
@@ -143,7 +143,7 @@ class SmartMoney(Factor):
             # 2.取得样本个股信息
             # stock_basics = ts.get_stock_basics()
             s = (calc_date - datetime.timedelta(days=90)).strftime('%Y%m%d')
-            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            stock_basics = Utils.get_stock_basics(s)
             # 3.遍历样本个股代码，计算Smart_Q因子载荷值
             dict_factor = {'date': None, 'id': [], 'factorvalue': []}
 

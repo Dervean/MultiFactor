@@ -192,7 +192,7 @@ class APM(Factor):
             trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
         else:
             trading_days_series = Utils.get_trading_days(end=start_date, ndays=1)
-        all_stock_basics = CDataHandler.DataApi.get_secu_basics()
+        # all_stock_basics = CDataHandler.DataApi.get_secu_basics()
         # 2.遍历交易日序列，计算APM因子载荷
         dict_apm = None
         for calc_date in trading_days_series:
@@ -201,7 +201,7 @@ class APM(Factor):
                 continue
             # 2.1.遍历个股，计算个股APM.stat统计量，过去20日收益率，分别放进stat_lst,ret20_lst列表中
             s = (calc_date - datetime.timedelta(days=90)).strftime('%Y%m%d')
-            stock_basics = all_stock_basics[all_stock_basics.list_date < s]
+            stock_basics = Utils.get_stock_basics(s)
             stat_lst = []
             ret20_lst = []
             symbol_lst = []
