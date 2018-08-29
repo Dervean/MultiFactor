@@ -12,6 +12,8 @@ import numpy as np
 import statsmodels.api as sm
 import cvxpy as cvx
 import datetime
+import logging
+import math
 import src.settings as SETTINGS
 import src.alphamodel.alphafactors.cons as alphafactor_ct
 import src.riskmodel.riskfactors.cons as riskfactor_ct
@@ -20,6 +22,10 @@ from src.util.utils import Utils
 from src.riskmodel.RiskModel import Barra
 from src.portfolio.portfolio import CWeightHolding, CPortfolio
 from src.alphamodel.alphafactors import *
+
+
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 
 def test_alpha_factor(factor_name, start_date, end_date):
@@ -44,6 +50,12 @@ def test_alpha_factor(factor_name, start_date, end_date):
 
     # 计算最小波动纯因子组合
     _calc_MVPFP(factor_name=factor_name, start_date=start_date, end_date=end_date, month_end=True, save=True)
+
+    # 计算最小波动纯因子组合的绩效
+    _calc_mvpfp_performance(factor_name=factor_name, start_date=start_date, end_date=end_date)
+
+    # 计算最小波动纯因子组合的汇总绩效
+    _calc_mvpfp_summary(factor_name=factor_name, calc_date=end_date)
 
 
 def _calc_alphafactor_loading(start_date, end_date=None, factor_name=None, multi_proc=False, test=False):
@@ -268,8 +280,8 @@ def _calc_MVPFP(factor_name, start_date, end_date=None, month_end=True, save=Fal
         N = len(stock_codes)
         w = cvx.Variable((N, 1))
         risk = cvx.quad_form(w, V)
-        constraints = [cvx.matmul(w.T * X_beta) == 0,
-                       cvx.matmul(w.T * x_target) == 1]
+        constraints = [cvx.matmul(w.T, X_beta) == 0,
+                       cvx.matmul(w.T, x_target) == 1]
         prob = cvx.Problem(cvx.Minimize(risk), constraints)
         prob.solve()
         if prob.status == cvx.OPTIMAL:
@@ -285,7 +297,6 @@ def _calc_MVPFP(factor_name, start_date, end_date=None, month_end=True, save=Fal
     return mvpfp_holding
 
 
-# TODO _calc_alphafactor_performance()
 def _calc_mvpfp_performance(factor_name, start_date, end_date):
     """
     计算最小波动纯因子组合的绩效
@@ -315,65 +326,173 @@ def _calc_mvpfp_performance(factor_name, start_date, end_date):
         mvpfp_filepath = os.path.join(mvpfp_path, mvpfp_filename)
         mvpfp_port.load_holdings_fromfile(mvpfp_filepath)
     # 遍历持仓数据, 计算组合绩效
-    df_daily_performance = pd.DataFrame(columns=alphamodel_ct.FACTOR_PERFORMANCE_HEADER['daily_performance'])
-    df_daily_performance.loc[0, 'port_daily_ret'] = 0.0
-    df_daily_performance.loc[0, 'bnk_daily_ret'] = 0.0
-    df_daily_performance.loc[0, 'hedge_daily_ret'] = 0.0
-    df_daily_performance.loc[0, 'port_nav'] = 1.0
-    df_daily_performance.loc[0, 'bnk_nav'] = 1.0
-    df_daily_performance.loc[0, 'hedge_nav'] = 1.0
-    df_daily_performance.loc[0, 'port_accu_ret'] = 0.0
-    df_daily_performance.loc[0, 'bnk_accu_ret'] = 0.0
-    df_daily_performance.loc[0, 'hedge_accu_ret'] = 0.0
+    df_daily_performance = pd.DataFrame(columns=alphamodel_ct.FACTOR_PERFORMANCE_HEADER['daily_performance'])       # 日度绩效
+    df_monthly_performance = pd.DataFrame(columns=alphamodel_ct.FACTOR_PERFORMANCE_HEADER['monthly_performance'])   # 月度绩效
+
+    df_daily_performance.loc[0, 'daily_ret'] = 0.0
+    df_daily_performance.loc[0, 'nav'] = 1.0
+    df_daily_performance.loc[0, 'accu_ret'] = 0.0
+
     mvpfp_holdings = mvpfp_port.holdings
     prev_holdingdate = curr_holding_date = None
+    prevmonth_idx = 0
     holding_dates = list(mvpfp_holdings.keys())
     df_daily_performance.loc[0, 'date'] = holding_dates[0]
     if end_date > holding_dates[-1]:
         holding_dates += [end_date]
     mvpfp_daily_performance = pd.Series(index=alphamodel_ct.FACTOR_PERFORMANCE_HEADER['daily_performance'])
+    mvpfp_monthly_performance = pd.Series(index=alphamodel_ct.FACTOR_PERFORMANCE_HEADER['monthly_performance'])
     for holding_date in holding_dates:
         prev_holdingdate = curr_holding_date
         curr_holding_date = holding_date
         if prev_holdingdate is None:
             continue
+        prevmonth_idx = df_daily_performance.index[-1]
         holding_data = mvpfp_holdings[prev_holdingdate]
         trading_days_series = Utils.get_trading_days(start=prev_holdingdate+datetime.timedelta(days=1), end=curr_holding_date)
         for calc_date in trading_days_series:
             mvpfp_daily_performance['date'] = calc_date
             daily_ret = 0
+            # TODO 增加并行计算个股绩效的功能
             for _, holding in holding_data.holding.iterrows():
                 ret = Utils.calc_interval_ret(holding['code'], start=trading_days_series[0], end=calc_date)
                 if ret is not None:
                     daily_ret += ret * holding['weight']
-            mvpfp_daily_performance['port_daily_ret'] = daily_ret
-            mvpfp_daily_performance['bnk_daily_ret'] = Utils.calc_interval_ret(alphamodel_ct.BENCHMARK, start=trading_days_series[0], end=calc_date)
-            mvpfp_daily_performance['hedge_daily_ret'] = mvpfp_daily_performance['port_daily_ret'] - mvpfp_daily_performance['bnk_daily_ret']
+            mvpfp_daily_performance['daily_ret'] = daily_ret
+            mvpfp_daily_performance['nav'] = df_daily_performance.iloc[-1]['nav'] * (1 + daily_ret)
+            mvpfp_daily_performance['accu_ret'] = mvpfp_daily_performance['nav'] - 1
 
             df_daily_performance = df_daily_performance.append(mvpfp_daily_performance, ignore_index=True)
 
-    for k in range(1, len(df_daily_performance)):
-        df_daily_performance.loc[k, 'port_nav'] = df_daily_performance.loc[k-1, 'port_nav'] * (1 + df_daily_performance.loc[k, 'port_daily_ret'])
-        df_daily_performance.loc[k, 'bkn_nav'] = df_daily_performance.loc[k-1, 'bnk_nav'] * (1 + df_daily_performance.loc[k, 'bnk_daily_ret'])
-        df_daily_performance.loc[k, 'hedge_nav'] = df_daily_performance.loc[k-1, 'hedge_nav'] * (1 + df_daily_performance.loc[k, 'hedge_daily_ret'])
-        df_daily_performance.loc[k, 'port_accu_ret'] = df_daily_performance.loc[k, 'port_nav'] - 1
-        df_daily_performance.loc[k, 'bnk_accu_ret'] = df_daily_performance.loc[k, 'bnk_nav'] - 1
-        df_daily_performance.loc[k, 'hedge_accu_ret'] = df_daily_performance.loc[k, 'hedge_nav'] - 1
+        mvpfp_monthly_performance['date'] = curr_holding_date
+        mvpfp_monthly_performance['monthly_ret'] = df_daily_performance.iloc[-1]['nav'] / df_daily_performance.loc[prevmonth_idx, 'nav'] - 1.0
+        df_monthly_performance = df_monthly_performance.append(mvpfp_monthly_performance, ignore_index=True)
+
+    # for k in range(1, len(df_daily_performance)):
+    #     df_daily_performance.loc[k, 'nav'] = df_daily_performance.loc[k-1, 'nav'] * (1 + df_daily_performance.loc[k, 'daily_ret'])
+    #     df_daily_performance.loc[k, 'accu_ret'] = df_daily_performance.loc[k, 'nav'] - 1
+
+    # 保存数据
+    _save_mvpfp_performance(df_daily_performance, factor_name, 'daily', 'a')
+    _save_mvpfp_performance(df_monthly_performance, factor_name, 'monthly', 'a')
 
 
-# TODO _save_mvpfp_performance()
-def _save_mvpfp_performance(performance_data, performance_filepath, performance_type, save_type):
+def _calc_mvpfp_summary(factor_name, calc_date):
+    """
+    计算最小波动纯因子组合的汇总绩效数据
+    Parameters:
+    --------
+    :param factor_name: str
+        alpha因子名称, e.g: SmartMoney
+    :param calc_date: datetime-like, str
+        计算日期, e.g: YYYY-MM-DD, YYYYMMDD
+    :return:
+        计算汇总绩效数据, 并保存
+    """
+    calc_date = Utils.to_date(calc_date)
+    dailyperformance_filepath = os.path.join(SETTINGS.FACTOR_DB_PATH,
+                                             eval('alphafactor_ct.'+factor_name.uppper()+'.CT')['db_file'],
+                                             'performance/performance_daily.csv')
+    df_daily_performance = pd.read_csv(dailyperformance_filepath, parse_dates=[0], header=0)
+    df_daily_performance = df_daily_performance[df_daily_performance['date'] <= calc_date]
+
+    monthlyperformance_filepath = os.path.join(SETTINGS.FACTOR_DB_PATH,
+                                               eval('alphafactor_ct.'+factor_name.upper()+'.CT')['db_file'],
+                                               'performance/performance_monthly.csv')
+    df_monthly_performance = pd.read_csv(monthlyperformance_filepath, parse_dates=[0], header=0)
+    df_monthly_performance = df_monthly_performance[df_monthly_performance['date'] <= calc_date]
+    if len(df_monthly_performance) < 12:
+        logging.info("alpha因子'%s'的历史月度绩效数据长度小于12个月, 不计算汇总绩效数据." % factor_name)
+        return
+    summary_performance = pd.Series(index=alphamodel_ct.FACTOR_PERFORMANCE_HEADER['summary_performance'])
+    for k in alphamodel_ct.SUMMARY_PERFORMANCE_MONTH_LENGTH:
+        if k == 'total':
+            daily_performance = df_daily_performance
+            monthly_performance = df_monthly_performance
+            summary_performance['type'] = k
+        else:
+            if not isinstance(k, int):
+                raise TypeError("计算因子汇总绩效的时间区间类型除了'total'外, 应该为整型.")
+            if len(df_monthly_performance) >= k:
+                monthly_performance = df_monthly_performance.iloc[-k:]
+            else:
+                logging.info("alpha因子'%s'的历史月度绩效数据长度小于%d个月, 不予计算该历史时间长度的汇总绩效." % (factor_name, k))
+                continue
+            daily_performance = df_daily_performance[df_daily_performance['date'] >= monthly_performance.iloc[0]['date']]
+            summary_performance['type'] = str(k) + 'm'
+
+        summary_performance['date'] = daily_performance.iloc[-1]['date']
+        summary_performance['total_ret'] = daily_performance.iloc[-1]['nav'] / daily_performance.iloc[0]['nav'] - 1.0
+        summary_performance['annual_ret'] = math.pow(summary_performance['total_ret']+1, 12/k)
+        summary_performance['volatility'] = np.std(daily_performance['daily_ret']) * math.sqrt(250)
+        summary_performance['monthly_winrate'] = len(monthly_performance[monthly_performance['monthly_ret'] > 0]) / k
+        summary_performance['IR'] = summary_performance['annual_ret'] / summary_performance['volatility']
+
+        fmax_drawdown = 0.0
+        for m in range(1, len(daily_performance)):
+            fdrawdown = daily_performance.iloc[m]['nav'] / max(daily_performance.iloc[:m]['nav']) - 1.0
+            if fdrawdown < fmax_drawdown:
+                fmax_drawdown = fdrawdown
+        summary_performance['max_drawdown'] = fmax_drawdown
+
+        _save_mvpfp_performance(summary_performance, factor_name, 'summary', 'a')
+
+
+def _save_mvpfp_performance(performance_data, factor_name, performance_type, save_type):
     """
     保存最小波动纯因子组合的绩效数据
     Parameters:
     --------
     :param performance_data: pd.DataFrame
-        绩效数据
-    :param performance_filepath:
-    :param performance_type:
-    :param save_type:
+        绩效数据(包含日度时间序列数据, 月度时间序列数据, summary data)
+    :param factor_name: str
+        alpha因子名称, e.g: SmartMoney
+    :param performance_type: str
+        绩效数据类型, 'daily'=日度时间序列数据, 'monthly'=月度时间序列数据, 'summary'=汇总数据
+    :param save_type: str
+        保存类型, 'a'=新增, 'w'=覆盖
     :return:
     """
+    if not isinstance(performance_data, pd.DataFrame):
+        raise TypeError("绩效数据必须为pd.DataFrame类型.")
+    if performance_data.empty:
+        logging.info('绩效数据为空, 未保存.')
+        return
+
+    if performance_type == 'daily':
+        performance_filepath = os.path.join(SETTINGS.FACTOR_DB_PATH,
+                                            eval('alphafactor_ct.'+factor_name.upper()+'_CT')['db_file'],
+                                            'performance/performance_daily.csv')
+    elif performance_type == 'monthly':
+        performance_filepath = os.path.join(SETTINGS.FACTOR_DB_PATH,
+                                            eval('alphafactor_ct.' + factor_name.upper() + '_CT')['db_file'],
+                                            'performance/performance_monthly.csv')
+    elif performance_type == 'summary':
+        if not isinstance(performance_data, pd.Series):
+            raise TypeError("‘summary’类型的绩效数据类型应该为pd.Series.")
+        performance_filepath = os.path.join(SETTINGS.FACTOR_DB_PATH,
+                                            eval('alphafactor_ct.' + factor_name.upper() + '_CT')['db_file'],
+                                            'performance/performance_{}.csv'.format(performance_data['type']))
+    else:
+        raise ValueError("绩效数据类型有误, 应为'daily'=日度绩效时间序列数据, 'monthly'=月度绩效时间序列数据, 'summary'=绩效汇总数据.")
+
+    if save_type == 'a':
+        if performance_type == 'daily':
+            if os.path.isfile(performance_filepath):
+                df_performance_data = pd.read_csv(performance_filepath, parse_dates=[0], header=0)
+                df_performance_data = df_performance_data[df_performance_data['date'] <= performance_data.loc[0, 'date']]
+                if not df_performance_data.empty:
+                    performance_data['nav'] *= df_performance_data.loc[0, 'nav']
+                    performance_data['accu_ret'] = performance_data['nav'] - 1
+                Utils.save_timeseries_data(performance_data, performance_filepath, 'a')
+        elif performance_type in ['monthly', 'summary']:
+            Utils.save_timeseries_data(performance_data, performance_filepath, 'a')
+        else:
+            raise ValueError("绩效数据类型有误, 应为'daily'=日度绩效时间序列数据, 'monthly'=月度绩效时间序列数据, 'summary'=绩效汇总数据.")
+    elif save_type == 'w':
+        Utils.save_timeseries_data(performance_data, performance_filepath, 'w')
+    else:
+        raise ValueError("保存类型有误, 应为'a'=新增, 'w'=覆盖.")
 
 
 if __name__ == '__main__':

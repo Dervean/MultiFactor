@@ -10,11 +10,14 @@
 BENCHMARK = 'SH000905'
 
 # alpha因子绩效评估结果数据的header
-FACTOR_PERFORMANCE_HEADER = {'daily_performance': ['date', 'port_daily_ret', 'bnk_daily_ret', 'hedge_daily_ret',
-                                                   'port_nav', 'bnk_nav', 'hedge_nav', 'port_accu_ret', 'bnk_accu_ret',
-                                                   'hedge_accu_ret'],
-                             'monthly_performance': [],
-                             'summary_performance': []}
+FACTOR_PERFORMANCE_HEADER = {'daily_performance': ['date', 'daily_ret', 'nav', 'accu_ret'],
+                             'monthly_performance': ['date', 'monthly_ret'],
+                             'summary_performance': ['date', 'total_ret', 'annual_ret', 'max_drawdown', 'volatility',
+                                                     'monthly_winrate', 'IR', 'type']
+                             }
+
+# alpha因子汇总绩效的时间区间类型
+SUMMARY_PERFORMANCE_MONTH_LENGTH = ['total', 60, 48, 36, 24, 12]
 
 
 if __name__ == '__main__':
