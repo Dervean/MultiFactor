@@ -21,7 +21,9 @@ import src.alphamodel.cons as alphamodel_ct
 from src.util.utils import Utils
 from src.riskmodel.RiskModel import Barra
 from src.portfolio.portfolio import CWeightHolding, CPortfolio
-from src.alphamodel.alphafactors import *
+from src.alphamodel.alphafactors.SmartMoney import SmartMoney
+from src.alphamodel.alphafactors.APM import APM
+from src.alphamodel.alphafactors.IntradayMomentum import IntradayMomentum
 
 
 logging.basicConfig(level=logging.INFO,
@@ -142,7 +144,7 @@ def _calc_Orthogonalized_factorloading(factor_name, start_date, end_date=None, m
 
         # 读取风险模型中的风格因子载荷矩阵
         df_stylefactor_loading = CRiskModel.get_StyleFactorloading_matrix(calc_date)
-        df_stylefactor_loading.renmae(columns={'code': 'id'}, inplace=True)
+        df_stylefactor_loading.rename(columns={'code': 'id'}, inplace=True)
 
         # 读取alpha因子载荷矩阵数据(经正交化后的载荷值)
         df_alphafactor_loading = pd.DataFrame()
@@ -162,7 +164,7 @@ def _calc_Orthogonalized_factorloading(factor_name, start_date, end_date=None, m
         # 合并目标因子载荷、风格因子载荷与alpha因子载荷
         df_factorloading = pd.merge(left=df_targetfactor_loading, right=df_stylefactor_loading, how='inner', on='id')
         if not df_alphafactor_loading.empty:
-            df_factorloading = pd.merge(left=df_stylefactor_loading, right=df_alphafactor_loading, how='inner', on='id')
+            df_factorloading = pd.merge(left=df_factorloading, right=df_alphafactor_loading, how='inner', on='id')
 
         # 构建目标因子载荷向量、风格与alpha因子载荷矩阵
         df_factorloading.set_index('id', inplace=True)
@@ -208,7 +210,7 @@ def _get_factorloading(factor_name, date, factor_type):
         2. factorvalue: 因子值
     """
     date = Utils.datetimelike_to_str(date, dash=False)
-    factorloading_path = os.path.join(SETTINGS.FACTOR_DB_PATH, eval('alphafactor_ct.'+factor_name.upper()+'.CT')['db_file'], factor_type, factor_name)
+    factorloading_path = os.path.join(SETTINGS.FACTOR_DB_PATH, eval('alphafactor_ct.'+factor_name.upper()+'_CT')['db_file'], factor_type, factor_name)
     df_factorloading = Utils.read_factor_loading(factorloading_path, date, drop_na=True)
     return df_factorloading
 
@@ -253,32 +255,35 @@ def _calc_MVPFP(factor_name, start_date, end_date=None, month_end=True, save=Fal
         if month_end and (not Utils.is_month_end(calc_date)):
             continue
         # 取得/计算calc_date的个股协方差矩阵数据
-        stock_codes, arr_stocks_covmat = CRiskModel.calc_stocks_covmat(calc_date)
-        # 取得个股风格因子载荷矩阵数据
-        df_stylefactor_loading = CRiskModel.get_StyleFactorloading_matrix(calc_date)
-        # df_stylefactor_loading.set_index('code', inplace=True)
-        # df_stylefactor_loading = df_stylefactor_loading.loc[stock_codes]    # 按个股顺序重新排列
-        # arr_stylefactor_loading = np.array(df_stylefactor_loading)
+        df_stocks_covmat = CRiskModel.calc_stocks_covmat(calc_date)
+        df_stocks_covmat.reset_index(inplace=True)
+        # 取得个股风险因子(含行业因子和风格因子)载荷矩阵数据
+        df_riskfactor_loading = CRiskModel.get_factorloading_matrix(calc_date, False)
         # 取得个股目标因子载荷向量数据(正交化后的因子载荷)
         df_targetfactor_loading = _get_factorloading(factor_name, calc_date, alphafactor_ct.FACTORLOADING_TYPE['ORTHOGONALIZED'])
         df_targetfactor_loading.drop(columns='date', inplace=True)
         df_targetfactor_loading.rename(columns={'id': 'code', 'factorvalue': factor_name}, inplace=True)
 
-        df_factorloading = pd.merge(left=df_stylefactor_loading, right=df_targetfactor_loading, how='inner', on='code')
+        # 合并数据, 提取共有个股的数据
+        df_factorloading = pd.merge(left=df_riskfactor_loading, right=df_targetfactor_loading, how='inner', on='code')
+        df_factorloading = pd.merge(left=df_factorloading, right=df_stocks_covmat, how='inner', on='code')
         df_factorloading.set_index('code', inplace=True)
 
-        df_stylefactor_loading = df_factorloading.loc[stock_codes, riskfactor_ct.STYLE_RISK_FACTORS]
-        arr_stylefactor_laoding = np.array(df_stylefactor_loading)
+        df_riskfactor_loading = df_factorloading.loc[:, riskfactor_ct.RISK_FACTORS_NOMARKET]
+        arr_riskfactor_laoding = np.array(df_riskfactor_loading)
 
-        df_targetfactor_loading = df_factorloading.loc[stock_codes, factor_name]
+        df_targetfactor_loading = df_factorloading.loc[:, factor_name]
         arr_targetfactor_loading = np.array(df_targetfactor_loading)
 
+        df_stocks_covmat = df_factorloading.loc[:, df_factorloading.index]
+        arr_stocks_covmat = np.array(df_stocks_covmat)
+
         # 优化计算最小波动纯因子组合权重
+        N = len(arr_stocks_covmat)
         V = arr_stocks_covmat
-        X_beta = arr_stylefactor_laoding
-        x_target = arr_targetfactor_loading
-        N = len(stock_codes)
-        w = cvx.Variable((N, 1))
+        X_beta = arr_riskfactor_laoding
+        x_target = arr_targetfactor_loading.reshape((N, 1))
+        w = cvx.Variable(N)
         risk = cvx.quad_form(w, V)
         constraints = [cvx.matmul(w.T, X_beta) == 0,
                        cvx.matmul(w.T, x_target) == 1]
@@ -286,7 +291,7 @@ def _calc_MVPFP(factor_name, start_date, end_date=None, month_end=True, save=Fal
         prob.solve()
         if prob.status == cvx.OPTIMAL:
             datelabel = Utils.datetimelike_to_str(calc_date, dash=False)
-            df_holding = pd.DataFrame({'date': [datelabel]*len(stock_codes), 'code': stock_codes, 'weight': w.value})
+            df_holding = pd.DataFrame({'date': [datelabel]*N, 'code': df_factorloading.index.tolist(), 'weight': w.value})
             mvpfp_holding.from_dataframe(df_holding)
             if save:
                 holding_path = os.path.join(SETTINGS.FACTOR_DB_PATH, eval('alphafactor_ct.'+factor_name.upper()+'.CT')['db_file'], 'mvpfp', '{}_{}.csv'.format(factor_name, datelabel))
@@ -496,5 +501,7 @@ def _save_mvpfp_performance(performance_data, factor_name, performance_type, sav
 
 
 if __name__ == '__main__':
-    pass
-
+    # pass
+    # _calc_alphafactor_loading(start_date='2018-06-29', end_date='2018-06-29', factor_name='SmartMoney', multi_proc=False, test=True)
+    # _calc_Orthogonalized_factorloading(factor_name='SmartMoney', start_date='2018-06-29', end_date='2018-06-29', month_end=True, save=True)
+    _calc_MVPFP(factor_name='SmartMoney', start_date='2018-06-29', end_date='2018-06-29', month_end=True, save=True)

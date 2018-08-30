@@ -265,8 +265,10 @@ class Barra(object):
         :param calc_date: datetime-like, str
             计算日期, e.g: YYYY-MM-DD, YYYYMMDD
         :return: tuple(list, np.array)
+                 pd.DataFrame
         --------
             返回一个元组, 第一个元素为个股代码list, 第二个元素为个股协方差矩阵
+            返回个股协方差数据, index和columns均为个股代码
         """
         calc_date = Utils.to_date(calc_date)
         # 取得个股风险因子载荷数据
@@ -275,16 +277,21 @@ class Barra(object):
         df_specvar = self._get_spec_var('var', calc_date)[Utils.datetimelike_to_str(calc_date, dash=False)]
 
         tmp = pd.merge(left=df_factorloading, right=df_specvar, how='inner', on='code')
-        arr_factorloading = np.array(tmp.loc[:, riskfactor_ct.RISK_FACTORS])    # 个股因子载荷矩阵, 记为X
+        arr_factorloading = np.array(tmp.loc[:, riskfactor_ct.RISK_FACTORS_NOMARKET])    # 个股因子载荷矩阵, 记为X
         arr_specvar = np.diagflat(tmp['spec_var'].tolist())                     # 个股特质波动率方差矩阵, 记为sigma
 
         # 取得风险因子协方差矩阵数据, 记为F
-        arr_factor_covmat = self._get_factor_covmat('cov', calc_date, factors=riskfactor_ct.RISK_FACTORS)[Utils.datetimelike_to_str(calc_date, dash=False)]
+        arr_factor_covmat = self._get_factor_covmat('cov', calc_date, factors=riskfactor_ct.RISK_FACTORS_NOMARKET)[Utils.datetimelike_to_str(calc_date, dash=False)]
 
         # 个股协方差矩阵V = XFX'+sigma
         V = np.linalg.multi_dot([arr_factorloading, arr_factor_covmat, arr_factorloading.T]) + arr_specvar
 
-        return tmp['code'].tolist(), V
+        # return tmp['code'].tolist(), V
+        secu_codes = tmp['code'].tolist()
+        df_covmat = pd.DataFrame(V, index=secu_codes, columns=secu_codes)
+        df_covmat.index.name = 'code'
+        df_covmat.columns.name = 'code'
+        return df_covmat
 
     def _save_factor_ret(self, date, data, save_type='a'):
         """
@@ -661,22 +668,29 @@ class Barra(object):
         """读取风格因子载荷矩阵"""
         return self._get_StyleFactorloading_matrix(date)
 
-    def _get_factorloading_matrix(self, date):
+    def _get_factorloading_matrix(self, date, include_marketfactor=True):
         """
-        读取风险因子载荷矩阵数据, 含市场因子f_c
+        读取风险因子载荷矩阵数据
         Parameters:
         --------
         :param date: datetime-like, str
             读取日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :param include_marketfactor: bool
+            返回数据中是否含市场因子
         :return: pd.DataFrame
         """
         date = Utils.to_date(date)
         ind_factorloading = self._get_IndFactorloading_matrix(date)
         style_factorloading = self._get_StyleFactorloading_matrix(date)
         factorloading_matrix = pd.merge(left=ind_factorloading, right=style_factorloading, how='inner', on='code')
-        for mf in riskfactor_ct.MARKET_FACTORS:
-            factorloading_matrix[mf] = 1.0
+        if include_marketfactor:
+            for mf in riskfactor_ct.MARKET_FACTORS:
+                factorloading_matrix[mf] = 1.0
         return factorloading_matrix
+
+    def get_factorloading_matrix(self, date, include_marketfactor=True):
+        """读取风险因子载荷矩阵数据"""
+        return self._get_factorloading_matrix(date, include_marketfactor)
 
     def _naive_factor_covmat(self, date):
         """
@@ -1056,6 +1070,7 @@ class Barra(object):
         --------
             持仓数据在风险因子上的风险归因值(index为风险因子代码)
         """
+        # TODO 完善benchmark不为None的风险归因计算
         if (not isinstance(holding, CWeightHolding)) and (not isinstance(holding, CPortHolding)):
             raise ValueError("风险归因应提供WeightHolding类或PortHolding类的持仓数据.")
         date = Utils.to_date(date)

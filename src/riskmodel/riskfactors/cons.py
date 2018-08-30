@@ -150,7 +150,8 @@ INDUSTRY_FACTORS = ['sw_cj', 'sw_cm', 'sw_dqsb', 'sw_dz', 'sw_fdc', 'sw_fzfz', '
 MARKET_FACTORS = ['market']
 
 # 风险模型的风险因子总列表
-RISK_FACTORS = MARKET_FACTORS + INDUSTRY_FACTORS + STYLE_RISK_FACTORS
+RISK_FACTORS = MARKET_FACTORS + INDUSTRY_FACTORS + STYLE_RISK_FACTORS   # 含市场因子
+RISK_FACTORS_NOMARKET = INDUSTRY_FACTORS + STYLE_RISK_FACTORS           # 不含市场因子
 
 
 if __name__ == '__main__':

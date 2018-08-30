@@ -71,7 +71,7 @@ GROWTH_CT = DottableDict({'db_file': 'Growth/Growth',                   # 因子
                           })
 
 # alpha因子列表
-ALPHA_FACTORS = ['SmartMoney', 'APM', 'IntradayMomentum']
+ALPHA_FACTORS = []
 
 # 因子载荷类型
 FACTORLOADING_TYPE = {'RAW': 'raw',                         # 原始因子载荷

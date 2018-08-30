@@ -106,7 +106,7 @@ def _check_dlisted_indclassify():
 
 
 if __name__ == '__main__':
-    _check_dlisted_indclassify()
+    # _check_dlisted_indclassify()
     # download_sw_fyjr_classify()
     # trading_days_series = Utils.get_trading_days(start='2018-01-01', end='2018-01-09')
     # # for date in trading_days_series:
@@ -132,3 +132,5 @@ if __name__ == '__main__':
     # url = 'http://www.swsindex.com/downloadfiles.aspx?swindexcode=SwClass&type=530&columnid=8892'
     # resp = requests.get(url)
     # print(resp.content)
+
+    load_industry_classify('sw', '2018-08-24')
