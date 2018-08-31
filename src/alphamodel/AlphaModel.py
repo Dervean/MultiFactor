@@ -546,6 +546,6 @@ def _save_mvpfp_performance(performance_data, factor_name, performance_type, sav
 
 if __name__ == '__main__':
     # pass
-    # _calc_alphafactor_loading(start_date='2018-06-29', end_date='2018-06-29', factor_name='SmartMoney', multi_proc=False, test=True)
+    _calc_alphafactor_loading(start_date='2018-08-31', end_date='2018-08-31', factor_name='IntradayMomentum', multi_proc=False, test=True)
     # _calc_Orthogonalized_factorloading(factor_name='SmartMoney', start_date='2018-06-29', end_date='2018-06-29', month_end=True, save=True)
-    _calc_MVPFP(factor_name='SmartMoney', start_date='2018-06-29', end_date='2018-06-29', month_end=True, save=True)
+    # _calc_MVPFP(factor_name='SmartMoney', start_date='2018-06-29', end_date='2018-06-29', month_end=True, save=True)

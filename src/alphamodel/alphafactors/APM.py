@@ -10,6 +10,7 @@ import src.settings as SETTINGS
 from src.factors.factor import Factor
 import src.alphamodel.alphafactors.cons as alphafactor_ct
 from src.util.utils import Utils, SecuTradingStatus
+import src.util.cons as util_con
 from src.util.dataapi.CDataHandler import CDataHandler
 # from src.factors.Scale import Scale
 # from src.factors.Value import Value
@@ -147,7 +148,7 @@ class APM(Factor):
         delta_avg = np.mean(delta_array)    # 残差差值的均值
         delta_std = np.std(delta_array)     # 残差差值的标准差
         # 如果残差差值的标准差接近于0，返回None
-        if np.fabs(delta_std) < 0.0001:
+        if np.fabs(delta_std) < util_con.TINY_ABS_VALUE:
             return None
         stat = delta_avg / delta_std / np.sqrt(cls.__days)
         # logging.info('%s, stat = %.6f' % (code, stat))

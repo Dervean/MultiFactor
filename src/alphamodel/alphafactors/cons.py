@@ -22,7 +22,7 @@ SMARTMONEY_CT = DottableDict({'days_num': 10,                               # �
 # APM因子的配置参数
 APM_CT = DottableDict({'index_code': '000001',                              # 指数代码
                        'days_num': 20,                                      # 计算因子载荷所需分钟行情的天数
-                       'db_file': 'AlhaFactor/APM',                         # 因子载荷的保存文件路径名（相对于因子数据库根目录的相对路径）
+                       'db_file': 'AlphaFactor/APM',                        # 因子载荷的保存文件路径名（相对于因子数据库根目录的相对路径）
                        'month_end': True,                                   # 是否只计算月末的因子载荷
                        'component': [],                                     # 成分因子列表
                        'pure_apm_db_file': 'Sentiment/APM/PureAPM',
@@ -35,8 +35,8 @@ INTRADAYMOMENTUM_CT = DottableDict({'days_num': 20,                             
                                     'db_file': 'AlphaFactor/IntradayMomentum',  # 日内时点动量因子载荷的保存文件路径名（相对于因子数据库根目录的相对路径）
                                     'month_end': True,                          # 是否只计算月末的因子载荷
                                     'optimized': False,                         # 是否计算最优化权重
-                                    'synthesized': False,                       # 是否计算合成日内动量因子
-                                    'factor_ic_file': 'AlphaFactor/IntradayMomentum/raw/intradaymomentum_id.csv',   # 日内各时段动量因子的IC数据文件
+                                    'synthesized': True,                       # 是否计算合成日内动量因子
+                                    'factor_ic_file': 'AlphaFactor/IntradayMomentum/raw/intradaymomentum_ic.csv',   # 日内各时段动量因子的IC数据文件
                                     'optimal_weight_file': 'AlphaFactor/IntradayMomentum/raw/optimal_weight.csv',   # 日内因子最优权重文件相对路径
                                     'backtest_path': 'FactorBackTest/IntradayMomentum'          # 历史回测结果文件的保存路径（相对于因子数据库根目录的相对路径）
                                     })

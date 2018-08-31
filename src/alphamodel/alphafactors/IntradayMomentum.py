@@ -239,7 +239,7 @@ class IntradayMomentum(Factor):
                 cls._save_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_intraday_momentum, 'periodmomentum', factor_type='raw')
 
             # 计算日内各时段动量因子的Rank IC值向量, 并保存
-            cls._calc_periodmomentum_ic(calc_date, 'month')
+            # cls._calc_periodmomentum_ic(calc_date, 'month')
 
             # 计算最优化权重
             if alphafactor_ct.INTRADAYMOMENTUM_CT['optimized']:
@@ -279,8 +279,8 @@ class IntradayMomentum(Factor):
                     cls._save_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), df_std_intradaymonmentum, 'IntradayMomentum', factor_type='standardized', columns=['date', 'id', 'factorvalue'])
 
             # 休息360秒
-            logging.info('Suspending for 360s.')
-            time.sleep(360)
+            # logging.info('Suspending for 360s.')
+            # time.sleep(360)
         return dict_intraday_momentum
 
     @classmethod
