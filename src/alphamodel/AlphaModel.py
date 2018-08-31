@@ -254,11 +254,14 @@ def _calc_MVPFP(factor_name, start_date, end_date=None, month_end=True, save=Fal
     for calc_date in trading_days_series:
         if month_end and (not Utils.is_month_end(calc_date)):
             continue
+
+### ------------------------------------------------------------------------------ ###
+        """
         # 取得/计算calc_date的个股协方差矩阵数据
         df_stocks_covmat = CRiskModel.calc_stocks_covmat(calc_date)
         df_stocks_covmat.reset_index(inplace=True)
         # 取得个股风险因子(含行业因子和风格因子)载荷矩阵数据
-        df_riskfactor_loading = CRiskModel.get_factorloading_matrix(calc_date, False)
+        df_riskfactor_loading = CRiskModel.get_factorloading_matrix(calc_date, riskfactor_ct.RISK_FACTORS_NOMARKET)
         # 取得个股目标因子载荷向量数据(正交化后的因子载荷)
         df_targetfactor_loading = _get_factorloading(factor_name, calc_date, alphafactor_ct.FACTORLOADING_TYPE['ORTHOGONALIZED'])
         df_targetfactor_loading.drop(columns='date', inplace=True)
@@ -294,7 +297,48 @@ def _calc_MVPFP(factor_name, start_date, end_date=None, month_end=True, save=Fal
             df_holding = pd.DataFrame({'date': [datelabel]*N, 'code': df_factorloading.index.tolist(), 'weight': w.value})
             mvpfp_holding.from_dataframe(df_holding)
             if save:
-                holding_path = os.path.join(SETTINGS.FACTOR_DB_PATH, eval('alphafactor_ct.'+factor_name.upper()+'.CT')['db_file'], 'mvpfp', '{}_{}.csv'.format(factor_name, datelabel))
+                holding_path = os.path.join(SETTINGS.FACTOR_DB_PATH, eval('alphafactor_ct.'+factor_name.upper()+'._CT')['db_file'], 'mvpfp', '{}_{}.csv'.format(factor_name, datelabel))
+                mvpfp_holding.save_data(holding_path)
+        else:
+            raise cvx.SolverError("%s优化计算%s最小纯因子组合失败。" % (Utils.datetimelike_to_str(calc_date), factor_name))
+        """
+### ------------------------------------------------------------------------------ ###
+
+        # 读取风险模型相关数据: 风险因子暴露矩阵, 风险因子协方差矩阵, 特质波动率方差
+        df_riskfactor_loading, arr_covmat, spec_var = CRiskModel.get_riskmodel_data(calc_date, factors=riskfactor_ct.RISK_FACTORS_NOMARKET, cov_type='cov', var_type='var')
+
+        # 读取目标因子载荷数据(正交化后的因子载荷)
+        df_targetfactor_loading = _get_factorloading(factor_name, calc_date, alphafactor_ct.FACTORLOADING_TYPE['ORTHOGONALIZED'])
+        df_targetfactor_loading.drop(columns='date', inplace=True)
+        df_targetfactor_loading.rename(columns={'id': 'code', 'factorvalue': factor_name}, inplace=True)
+
+        df_riskfactor_loading.reset_index(inplace=True)
+        df_factorloading = pd.merge(left=df_riskfactor_loading, right=df_targetfactor_loading, how='inner', on='code')
+        df_factorloading.set_index('code', inplace=True)
+
+        df_riskfactor_loading = df_factorloading[riskfactor_ct.RISK_FACTORS_NOMARKET]
+        targetfactor_loading = df_factorloading[factor_name]
+        spec_var = spec_var[df_factorloading.index]
+
+        n = len(df_riskfactor_loading)          # 个股数量
+        F = np.array(df_riskfactor_loading)     # 个股风险因子载荷矩阵
+        sigma = arr_covmat                      # 风险因子协方差矩阵
+        D = np.diag(spec_var)                   # 个股特质波动率方差矩阵(对角矩阵)
+        w = cvx.Variable(n)                     # 个股权重向量
+        f = F.T * w
+        risk = cvx.quad_form(f, sigma) + cvx.quad_form(w, D)
+
+        x_alpha = np.array(targetfactor_loading)
+        constraints = [w*F == 0,
+                       w*x_alpha == 1]
+        prob = cvx.Problem(cvx.Minimize(risk), constraints)
+        prob.solve(verbose=True)
+        if prob.status == cvx.OPTIMAL:
+            datelabel = Utils.datetimelike_to_str(calc_date, dash=False)
+            df_holding = pd.DataFrame({'date': [datelabel]*n, 'code': targetfactor_loading.index.tolist(), 'weight': w.value})
+            mvpfp_holding.from_dataframe(df_holding)
+            if save:
+                holding_path = os.path.join(SETTINGS.FACTOR_DB_PATH, eval('alphafactor_ct.'+factor_name.upper()+'_CT')['db_file'], 'mvpfp', '{}_{}.csv'.format(factor_name, datelabel))
                 mvpfp_holding.save_data(holding_path)
         else:
             raise cvx.SolverError("%s优化计算%s最小纯因子组合失败。" % (Utils.datetimelike_to_str(calc_date), factor_name))

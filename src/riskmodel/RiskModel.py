@@ -293,6 +293,46 @@ class Barra(object):
         df_covmat.columns.name = 'code'
         return df_covmat
 
+    def get_riskmodel_data(self, date, factors=None, cov_type='cov', var_type='var'):
+        """
+        读取风险模型相关的数据, 包含: 因子暴露矩阵, 因子协方差矩阵, 特质波动率方差矩阵
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :param factors: str, list of str
+            涉及的因子或因子列表, 默认为None, 即所有风险因子
+        :param cov_type: str
+            因子协方差矩阵类型, 'naive'=朴素协方差因子矩阵, 'cov'=最终协方差矩阵, 默认为'cov'
+        :param var_type: str
+            特质波动率方差矩阵类型, 'naive'=朴素特质波动率方差矩阵, 'var'=最终特质波动率方差矩阵, 默认为'var'
+        :return: tuple(pd.DataFrame, np.array, pd.Series)
+        --------
+            风险模型相关数据:
+            [1]. 第一个元素为个股风险因子暴露矩阵(pd.DataFrame):
+                 0. code: 个股代码(index)
+                 1...n: factor_name: 风险因子载荷
+            [2]. 第二个元素为风险因子协方差矩阵(np.array)
+            [3]. 第三个元素为个股特质波动率方差矩阵(pd.Series)
+                 index为个股代码, Series数值为个股对应的特质方差
+        """
+        # 取得因子暴露矩阵
+        df_factorloading = self.get_factorloading_matrix(date, factors=factors)
+
+        # 取得特质波动率方差矩阵
+        df_specvar = self.get_spec_var(date, var_type=var_type)
+
+        # 取得因子协方差矩阵
+        arr_covmat = self.get_factor_covmat(date, cov_type=cov_type, factors=factors)
+
+        # factors = df_factorloading.columns.tolist()
+        tmp = pd.merge(left=df_factorloading, right=df_specvar, how='inner', on='code')
+        tmp.set_index('code', inplace=True)
+        df_factorloading = tmp[factors]
+        spec_var = tmp['spec_var']
+
+        return df_factorloading, arr_covmat, spec_var
+
     def _save_factor_ret(self, date, data, save_type='a'):
         """
         保存风险因子报酬数据
@@ -672,29 +712,40 @@ class Barra(object):
         """读取风格因子载荷矩阵"""
         return self._get_StyleFactorloading_matrix(date)
 
-    def _get_factorloading_matrix(self, date, include_marketfactor=True):
+    def _get_factorloading_matrix(self, date, factors=None):
         """
         读取风险因子载荷矩阵数据
         Parameters:
         --------
         :param date: datetime-like, str
             读取日期, e.g: YYYY-MM-DD, YYYYMMDD
-        :param include_marketfactor: bool
-            返回数据中是否含市场因子
+        :param factors: str, list
+            需要返回的因子
         :return: pd.DataFrame
         """
         date = Utils.to_date(date)
         ind_factorloading = self._get_IndFactorloading_matrix(date)
         style_factorloading = self._get_StyleFactorloading_matrix(date)
         factorloading_matrix = pd.merge(left=ind_factorloading, right=style_factorloading, how='inner', on='code')
-        if include_marketfactor:
-            for mf in riskfactor_ct.MARKET_FACTORS:
-                factorloading_matrix[mf] = 1.0
+        for mf in riskfactor_ct.MARKET_FACTORS:
+            factorloading_matrix[mf] = 1.0
+        if factors is not None:
+            if isinstance(factors, str):
+                if factors not in riskfactor_ct.RISK_FACTORS:
+                    raise ValueError("给定的因子名称不是风险因子, 无法返回风险因子载荷值.")
+                factors = ['code', factors]
+            elif isinstance(factors, list):
+                if not all([factor in riskfactor_ct.RISK_FACTORS for factor in factors]):
+                    raise ValueError("给定的因子中含非风险因子, 无法提供风险因子载荷值.")
+                factors = ['code'] + factors
+            else:
+                raise TypeError("factors参数类型只能为str或list")
+            factorloading_matrix = factorloading_matrix[factors]
         return factorloading_matrix
 
-    def get_factorloading_matrix(self, date, include_marketfactor=True):
+    def get_factorloading_matrix(self, date, factors=None):
         """读取风险因子载荷矩阵数据"""
-        return self._get_factorloading_matrix(date, include_marketfactor)
+        return self._get_factorloading_matrix(date, factors)
 
     def _naive_factor_covmat(self, date):
         """
@@ -764,8 +815,8 @@ class Barra(object):
             天数, 默认为None
         :param cov_type: str
             协方差矩阵类型, 'naive'=朴素协方差矩阵, 'cov'=最终协方差矩阵
-        :param factors: list of str
-            指定需要返回的因子列表
+        :param factors: str, list of str
+            指定需要返回的因子或因子列表
         :return: dict{str, np.array}
         --------
             风险因子协方差因子矩阵数据时间序列, dict{'YYYYMMDD': cov_mat}
@@ -787,7 +838,7 @@ class Barra(object):
         for calc_date in trading_days_series:
             covmat_path = os.path.join(cov_path, 'cov_{}.csv'.format(Utils.datetimelike_to_str(calc_date, dash=False)))
             df_factor_covmat = pd.read_csv(covmat_path, header=0, index_col=0)
-            if df_factor_covmat is not None:
+            if factors is not None:
                 df_factor_covmat = df_factor_covmat.loc[factors, factors]
             arr_factor_covmat = np.array(df_factor_covmat)
             factor_covmat[Utils.datetimelike_to_str(calc_date, dash=False)] = arr_factor_covmat
@@ -797,6 +848,24 @@ class Barra(object):
         else:
             return factor_covmat
 
+    def get_factor_covmat(self, date, cov_type='cov', factors=None):
+        """
+        读取风险因子协方差矩阵数据
+        Parameters:
+        --------
+        :param cov_type: str
+            协方差矩阵类型, 'naive'=朴素协方差矩阵, 'cov'=最终协方差矩阵, 默认'cov'
+        :param date: datetime-like, str
+            日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :param factors: str, list of str
+            指定需要返回的因子或因子列表
+        :return: np.array
+        """
+        dict_factor_covmat = self._get_factor_covmat(cov_type=cov_type, end=date, factors=factors)
+        if dict_factor_covmat is not None:
+            return dict_factor_covmat[list(dict_factor_covmat.keys())[0]]
+        else:
+            return None
 
     def _covmat_NeweyWest_adj(self, naive_covmat, date):
         """
@@ -959,7 +1028,7 @@ class Barra(object):
         Parameters:
         --------
         :param var_type: str
-            特质博定律方差的数据类型, 'naive'=朴素方差数据, 'var'=最终特质波动率方差数据
+            特质波动率方差的数据类型, 'naive'=朴素方差数据, 'var'=最终特质波动率方差数据
         :param end: datetime-like, str
             结束日期, e.g: YYYY-MM-DD, YYYYMMDD
         :param ndays: int
@@ -993,6 +1062,25 @@ class Barra(object):
             return None
         else:
             return spec_var
+
+    def get_spec_var(self, date, var_type='var'):
+        """
+        读取个股特质波动率方差数据
+        Parameters:
+        --------
+        :param date: datetime-like,str
+            日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :param var_type: str
+            特质波动率方差的数据类型, 'naive'=朴素方差数据, 'var'=最终特质波动率方差数据
+        :return: pd.DataFrame
+        --------
+            个股特质波动率方差矩阵数据
+        """
+        dict_spec_var = self._get_spec_var(var_type=var_type, end=date)
+        if dict_spec_var is not None:
+            return dict_spec_var[list(dict_spec_var.keys())[0]]
+        else:
+            return None
 
     def _specvar_NeweyWest_adj(self, naive_specvar, date):
         """
@@ -1054,7 +1142,8 @@ class Barra(object):
                 cov = np.sum(w * arr_spec_ret1 * arr_spec_ret2)
                 alpha = 1.0 - delta / (1.0 + D)
                 nw_adj += alpha * cov * 2
-            nw_specvar[code] = 21.0 * (naive_specvar[code] + nw_adj)
+            secu_nw_specvar = 21.0 * (naive_specvar[code] + nw_adj)
+            nw_specvar[code] = secu_nw_specvar if secu_nw_specvar > 0 else 0    # 确保特质波动率方差大于等于0
 
         nw_specvar.index.name = 'code'
         return nw_specvar
@@ -1093,7 +1182,7 @@ class Barra(object):
         df_factorloading = pd.merge(left=df_specvar, right=df_factorloading, how='inner', on='code')
 
         # df_factorloading.set_index('code', inplace=True)
-        arr_factorloading = np.array(df_factorloading.loc[:, riskfactor_ct.RISK_FACTORS])               # 因子暴露矩阵
+        arr_factorloading = np.array(df_factorloading.loc[:, riskfactor_ct.RISK_FACTORS_NOMARKET])               # 因子暴露矩阵
         arr_weight = np.array(df_factorloading.loc[:, 'weight']).reshape((len(df_factorloading), 1))    # 个股权重向量
         arr_specvar =np.diagflat(df_factorloading['spec_var'].tolist())                                 # 特质波动率方差矩阵
         # 取得风险因子协方差矩阵
@@ -1106,12 +1195,12 @@ class Barra(object):
         # 计算风险归因值
         Psi = np.dot(arr_weight.T, arr_factorloading).transpose()
         risk_contribution = 1.0 / fsigma * Psi * np.dot(arr_factor_covmat, Psi)
-        risk_contribution = pd.Series(risk_contribution.flatten(), index=riskfactor_ct.RISK_FACTORS)    # 风险因子的风险贡献数据
+        risk_contribution = pd.Series(risk_contribution.flatten(), index=riskfactor_ct.RISK_FACTORS_NOMARKET)    # 风险因子的风险贡献数据
         fselection = fsigma - risk_contribution.sum()
-        fallocation = risk_contribution.sum() - risk_contribution['market']
+        # fallocation = risk_contribution.sum() - risk_contribution['market']
         risk_contribution['sigma'] = fsigma                                                         # 组合预期波动率
         risk_contribution['selection'] = fselection                                                 # 选股带来的风险贡献
-        risk_contribution['allocation'] = fallocation                                               # 配置带来的风险贡献
+        # risk_contribution['allocation'] = fallocation                                               # 配置带来的风险贡献
         risk_contribution['industry'] = risk_contribution[riskfactor_ct.INDUSTRY_FACTORS].sum()     # 行业因子风险贡献
         risk_contribution['style'] = risk_contribution[riskfactor_ct.STYLE_RISK_FACTORS].sum()      # 风格因子风险贡献
 
@@ -1131,9 +1220,15 @@ if __name__ == '__main__':
 
     # BarraModel.estimate_factor_ret(start_date='2018-01-01', end_date='2018-06-30')
     # print(BarraModel._naive_factor_covmat('2018-06-29'))
-    BarraModel.calc_factor_covmat(start_date='2018-06-29', end_date='2018-06-29', calc_mode='cov')
-    # BarraModel.calc_spec_varmat(start_date='2018-01-01', end_date='2018-06-30', calc_mode='var')
+    # BarraModel.calc_factor_covmat(start_date='2018-06-29', end_date='2018-06-29', calc_mode='cov')
+    # BarraModel.calc_spec_varmat(start_date='2018-06-29', end_date='2018-06-30', calc_mode='var')
 
     # holding_data = load_holding_data('tmp', 'sh50')
     # risk_contribution = BarraModel.risk_contribution(holding_data, '2018-06-29')
     # print(risk_contribution)
+
+    holding_data = CWeightHolding()
+    mvpfp_filepath = os.path.join(SETTINGS.FACTOR_DB_PATH, 'AlphaFactor/SmartMoney/mvpfp/SmartMoney_20180629.csv')
+    holding_data.from_file(mvpfp_filepath)
+    risk_contribution = BarraModel.risk_contribution(holding_data, '2018-06-29')
+    print(risk_contribution)
