@@ -277,11 +277,11 @@ class Barra(object):
         df_specvar = self._get_spec_var('var', calc_date)[Utils.datetimelike_to_str(calc_date, dash=False)]
 
         tmp = pd.merge(left=df_factorloading, right=df_specvar, how='inner', on='code')
-        arr_factorloading = np.array(tmp.loc[:, riskfactor_ct.RISK_FACTORS_NOMARKET])    # 个股因子载荷矩阵, 记为X
+        arr_factorloading = np.array(tmp.loc[:, riskfactor_ct.RISK_FACTORS])    # 个股因子载荷矩阵, 记为X
         arr_specvar = np.diagflat(tmp['spec_var'].tolist())                     # 个股特质波动率方差矩阵, 记为sigma
 
         # 取得风险因子协方差矩阵数据, 记为F
-        arr_factor_covmat = self._get_factor_covmat('cov', calc_date, factors=riskfactor_ct.RISK_FACTORS_NOMARKET)[Utils.datetimelike_to_str(calc_date, dash=False)]
+        arr_factor_covmat = self._get_factor_covmat('cov', calc_date, factors=riskfactor_ct.RISK_FACTORS)[Utils.datetimelike_to_str(calc_date, dash=False)]
 
         # 个股协方差矩阵V = XFX'+sigma
         V = np.linalg.multi_dot([arr_factorloading, arr_factor_covmat, arr_factorloading.T]) + arr_specvar
@@ -761,7 +761,7 @@ class Barra(object):
         # 读取风险因子报酬序列数据
         ewma_param = riskmodel_ct.FACTOR_COVMAT_PARAMS['EWMA']
         date = Utils.to_date(date)
-        df_factor_ret = self._get_factor_ret(end=date, ndays=ewma_param['trailing'], factors=riskfactor_ct.RISK_FACTORS_NOMARKET)
+        df_factor_ret = self._get_factor_ret(end=date, ndays=ewma_param['trailing'], factors=riskfactor_ct.RISK_FACTORS)
         arr_factor_ret = np.array(df_factor_ret)
 
         # 采用协方差参数计算因子协方差矩阵
@@ -883,7 +883,7 @@ class Barra(object):
         # 读取风险因子报酬序列数据
         nw_param = riskmodel_ct.FACTOR_COVMAT_PARAMS['Newey_West']
         date = Utils.to_date(date)
-        df_factor_ret = self._get_factor_ret(end=date, ndays=nw_param['trailing'], factors=riskfactor_ct.RISK_FACTORS_NOMARKET)
+        df_factor_ret = self._get_factor_ret(end=date, ndays=nw_param['trailing'], factors=riskfactor_ct.RISK_FACTORS)
         arr_factor_ret = np.array(df_factor_ret)
 
         if naive_covmat.shape[0] != naive_covmat.shape[1]:
@@ -931,14 +931,14 @@ class Barra(object):
         regime_adj_param = riskmodel_ct.FACTOR_COVMAT_PARAMS['Vol_Regime_Adj']
         date = Utils.to_date(date)
         # 读取风险因子报酬数据序列
-        df_factorret = self._get_factor_ret(end=date, ndays=regime_adj_param['trailing'], factors=riskfactor_ct.RISK_FACTORS_NOMARKET)
+        df_factorret = self._get_factor_ret(end=date, ndays=regime_adj_param['trailing'], factors=riskfactor_ct.RISK_FACTORS)
         if df_factorret.shape[0] != regime_adj_param['trailing']:
             raise ValueError("风险因子报酬数据序列长度不等于%d." % regime_adj_param['trailing'])
-        if df_factorret.shape[1] != len(riskfactor_ct.RISK_FACTORS_NOMARKET):
+        if df_factorret.shape[1] != len(riskfactor_ct.RISK_FACTORS):
             raise ValueError("风险因子报酬数据序列的列数与风险因子数量不一致.")
         arr_factorret = np.array(df_factorret)
         # 读取风险因子朴素协方差矩阵数据序列, 并转换为风险因子方差序列数据
-        factor_covmat_series = self._get_factor_covmat(cov_type='naive', end=date-datetime.timedelta(days=1), ndays=regime_adj_param['trailing'], factors=riskfactor_ct.RISK_FACTORS_NOMARKET)
+        factor_covmat_series = self._get_factor_covmat(cov_type='naive', end=date-datetime.timedelta(days=1), ndays=regime_adj_param['trailing'], factors=riskfactor_ct.RISK_FACTORS)
         arr_varmat = np.zeros(arr_factorret.shape)
         k = 0
         for str_date, cov_mat in factor_covmat_series.items():
@@ -1182,11 +1182,11 @@ class Barra(object):
         df_factorloading = pd.merge(left=df_specvar, right=df_factorloading, how='inner', on='code')
 
         # df_factorloading.set_index('code', inplace=True)
-        arr_factorloading = np.array(df_factorloading.loc[:, riskfactor_ct.RISK_FACTORS_NOMARKET])               # 因子暴露矩阵
+        arr_factorloading = np.array(df_factorloading.loc[:, riskfactor_ct.RISK_FACTORS])               # 因子暴露矩阵
         arr_weight = np.array(df_factorloading.loc[:, 'weight']).reshape((len(df_factorloading), 1))    # 个股权重向量
         arr_specvar =np.diagflat(df_factorloading['spec_var'].tolist())                                 # 特质波动率方差矩阵
         # 取得风险因子协方差矩阵
-        arr_factor_covmat = self._get_factor_covmat('cov', date, factors=riskfactor_ct.RISK_FACTORS_NOMARKET)[Utils.datetimelike_to_str(date, dash=False)]
+        arr_factor_covmat = self._get_factor_covmat('cov', date, factors=riskfactor_ct.RISK_FACTORS)[Utils.datetimelike_to_str(date, dash=False)]
 
         # 计算组合预期波动率
         fsigma = np.sqrt(np.linalg.multi_dot([arr_weight.T, arr_factorloading, arr_factor_covmat, arr_factorloading.T, arr_weight]) + np.linalg.multi_dot([arr_weight.T, arr_specvar, arr_weight]))
@@ -1195,12 +1195,12 @@ class Barra(object):
         # 计算风险归因值
         Psi = np.dot(arr_weight.T, arr_factorloading).transpose()
         risk_contribution = 1.0 / fsigma * Psi * np.dot(arr_factor_covmat, Psi)
-        risk_contribution = pd.Series(risk_contribution.flatten(), index=riskfactor_ct.RISK_FACTORS_NOMARKET)    # 风险因子的风险贡献数据
+        risk_contribution = pd.Series(risk_contribution.flatten(), index=riskfactor_ct.RISK_FACTORS)    # 风险因子的风险贡献数据
         fselection = fsigma - risk_contribution.sum()
-        # fallocation = risk_contribution.sum() - risk_contribution['market']
+        fallocation = risk_contribution.sum() - risk_contribution['market']
         risk_contribution['sigma'] = fsigma                                                         # 组合预期波动率
         risk_contribution['selection'] = fselection                                                 # 选股带来的风险贡献
-        # risk_contribution['allocation'] = fallocation                                               # 配置带来的风险贡献
+        risk_contribution['allocation'] = fallocation                                               # 配置带来的风险贡献
         risk_contribution['industry'] = risk_contribution[riskfactor_ct.INDUSTRY_FACTORS].sum()     # 行业因子风险贡献
         risk_contribution['style'] = risk_contribution[riskfactor_ct.STYLE_RISK_FACTORS].sum()      # 风格因子风险贡献
 
@@ -1220,8 +1220,8 @@ if __name__ == '__main__':
 
     # BarraModel.estimate_factor_ret(start_date='2018-01-01', end_date='2018-06-30')
     # print(BarraModel._naive_factor_covmat('2018-06-29'))
-    # BarraModel.calc_factor_covmat(start_date='2018-06-29', end_date='2018-06-29', calc_mode='cov')
-    # BarraModel.calc_spec_varmat(start_date='2018-06-29', end_date='2018-06-30', calc_mode='var')
+    # BarraModel.calc_factor_covmat(start_date='2017-02-03', end_date='2018-06-29', calc_mode='cov')
+    # BarraModel.calc_spec_varmat(start_date='2017-01-03', end_date='2018-06-30', calc_mode='naive')
 
     # holding_data = load_holding_data('tmp', 'sh50')
     # risk_contribution = BarraModel.risk_contribution(holding_data, '2018-06-29')

@@ -305,7 +305,7 @@ def _calc_MVPFP(factor_name, start_date, end_date=None, month_end=True, save=Fal
 ### ------------------------------------------------------------------------------ ###
 
         # 读取风险模型相关数据: 风险因子暴露矩阵, 风险因子协方差矩阵, 特质波动率方差
-        df_riskfactor_loading, arr_covmat, spec_var = CRiskModel.get_riskmodel_data(calc_date, factors=riskfactor_ct.RISK_FACTORS_NOMARKET, cov_type='cov', var_type='var')
+        df_riskfactor_loading, arr_covmat, spec_var = CRiskModel.get_riskmodel_data(calc_date, factors=riskfactor_ct.RISK_FACTORS, cov_type='cov', var_type='var')
 
         # 读取目标因子载荷数据(正交化后的因子载荷)
         df_targetfactor_loading = _get_factorloading(factor_name, calc_date, alphafactor_ct.FACTORLOADING_TYPE['ORTHOGONALIZED'])
@@ -316,7 +316,7 @@ def _calc_MVPFP(factor_name, start_date, end_date=None, month_end=True, save=Fal
         df_factorloading = pd.merge(left=df_riskfactor_loading, right=df_targetfactor_loading, how='inner', on='code')
         df_factorloading.set_index('code', inplace=True)
 
-        df_riskfactor_loading = df_factorloading[riskfactor_ct.RISK_FACTORS_NOMARKET]
+        df_riskfactor_loading = df_factorloading[riskfactor_ct.RISK_FACTORS]
         targetfactor_loading = df_factorloading[factor_name]
         spec_var = spec_var[df_factorloading.index]
 
@@ -329,13 +329,18 @@ def _calc_MVPFP(factor_name, start_date, end_date=None, month_end=True, save=Fal
         risk = cvx.quad_form(f, sigma) + cvx.quad_form(w, D)
 
         x_alpha = np.array(targetfactor_loading)
+
         constraints = [w*F == 0,
                        w*x_alpha == 1]
         prob = cvx.Problem(cvx.Minimize(risk), constraints)
+
+        # prob = cvx.Problem(cvx.Minimize(cvx.sum(cvx.abs(w*F))), [w*x_alpha == 1])
+
         prob.solve(verbose=True)
         if prob.status == cvx.OPTIMAL:
             datelabel = Utils.datetimelike_to_str(calc_date, dash=False)
             df_holding = pd.DataFrame({'date': [datelabel]*n, 'code': targetfactor_loading.index.tolist(), 'weight': w.value})
+            df_holding.sort_values(by='weight', ascending=False, inplace=True)
             mvpfp_holding.from_dataframe(df_holding)
             if save:
                 holding_path = os.path.join(SETTINGS.FACTOR_DB_PATH, eval('alphafactor_ct.'+factor_name.upper()+'_CT')['db_file'], 'mvpfp', '{}_{}.csv'.format(factor_name, datelabel))
@@ -546,6 +551,6 @@ def _save_mvpfp_performance(performance_data, factor_name, performance_type, sav
 
 if __name__ == '__main__':
     # pass
-    _calc_alphafactor_loading(start_date='2018-08-31', end_date='2018-08-31', factor_name='IntradayMomentum', multi_proc=False, test=True)
+    # _calc_alphafactor_loading(start_date='2018-08-31', end_date='2018-08-31', factor_name='IntradayMomentum', multi_proc=False, test=True)
     # _calc_Orthogonalized_factorloading(factor_name='SmartMoney', start_date='2018-06-29', end_date='2018-06-29', month_end=True, save=True)
-    # _calc_MVPFP(factor_name='SmartMoney', start_date='2018-06-29', end_date='2018-06-29', month_end=True, save=True)
+    _calc_MVPFP(factor_name='SmartMoney', start_date='2018-06-29', end_date='2018-06-29', month_end=True, save=True)
