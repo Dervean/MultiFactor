@@ -106,9 +106,10 @@ def _check_dlisted_indclassify():
 
 
 if __name__ == '__main__':
+    pass
     # _check_dlisted_indclassify()
     # download_sw_fyjr_classify()
-    # trading_days_series = Utils.get_trading_days(start='2018-01-01', end='2018-01-09')
+    # trading_days_series = Utils.get_trading_days(start='2005-01-01', end='2009-12-30')
     # # for date in trading_days_series:
     # #     print('loading industry classify of {}.'.format(Utils.datetimelike_to_str(date, dash=True)))
     # #     load_industry_classify(date=date)
@@ -133,4 +134,6 @@ if __name__ == '__main__':
     # resp = requests.get(url)
     # print(resp.content)
 
-    load_industry_classify('sw', '2018-08-24')
+
+
+    # load_industry_classify('sw', '2018-08-24')

@@ -1209,7 +1209,7 @@ class Barra(object):
 
 if __name__ == '__main__':
     BarraModel = Barra()
-    # BarraModel.calc_factorloading('2014-01-01', '2014-12-31')
+    # BarraModel.calc_factorloading('2005-01-01', '2013-11-30')
     # BarraModel._calc_secu_dailyret('2018-07-02')
     # BarraModel._get_cap_weight('2017-12-29')
     # BarraModel._calc_IndFactorloading('2017-12-29')
@@ -1218,17 +1218,23 @@ if __name__ == '__main__':
     # print(BarraModel._get_StyleFactorloading_matrix('2017-12-29').head())
     # print(BarraModel._get_secu_dailyret('2018-01-02').head())
 
-    # BarraModel.estimate_factor_ret(start_date='2018-01-01', end_date='2018-06-30')
+    BarraModel.estimate_factor_ret(start_date='2009-01-01', end_date='2009-12-31')
     # print(BarraModel._naive_factor_covmat('2018-06-29'))
     # BarraModel.calc_factor_covmat(start_date='2017-02-03', end_date='2018-06-29', calc_mode='cov')
-    # BarraModel.calc_spec_varmat(start_date='2017-01-03', end_date='2018-06-30', calc_mode='naive')
+    # BarraModel.calc_spec_varmat(start_date='2017-01-17', end_date='2018-06-30', calc_mode='var')
 
     # holding_data = load_holding_data('tmp', 'sh50')
     # risk_contribution = BarraModel.risk_contribution(holding_data, '2018-06-29')
     # print(risk_contribution)
 
-    holding_data = CWeightHolding()
-    mvpfp_filepath = os.path.join(SETTINGS.FACTOR_DB_PATH, 'AlphaFactor/SmartMoney/mvpfp/SmartMoney_20180629.csv')
-    holding_data.from_file(mvpfp_filepath)
-    risk_contribution = BarraModel.risk_contribution(holding_data, '2018-06-29')
-    print(risk_contribution)
+    # holding_data = CWeightHolding()
+    # mvpfp_filepath = os.path.join(SETTINGS.FACTOR_DB_PATH, 'AlphaFactor/SmartMoney/mvpfp/SmartMoney_20180629.csv')
+    # holding_data.from_file(mvpfp_filepath)
+    # risk_contribution = BarraModel.risk_contribution(holding_data, '2018-06-29')
+    # print(risk_contribution)
+
+    # file_path = '/Volumes/DB/FactorDB/riskmodel/dailyret'
+    # for file_name in os.listdir(file_path):
+    #     if os.path.splitext(file_name)[1] == '.csv' and file_name[:8] >= '20050104' and file_name[:8] <= '20071228':
+    #         os.rename(os.path.join(file_path, file_name),
+    #                   os.path.join(file_path, 'dailyret_'+file_name))

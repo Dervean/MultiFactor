@@ -51,13 +51,13 @@ def test_alpha_factor(factor_name, start_date, end_date):
     _calc_Orthogonalized_factorloading(factor_name=factor_name, start_date=start_date, end_date=end_date, month_end=True, save=True)
 
     # 计算最小波动纯因子组合
-    _calc_MVPFP(factor_name=factor_name, start_date=start_date, end_date=end_date, month_end=True, save=True)
+    # _calc_MVPFP(factor_name=factor_name, start_date=start_date, end_date=end_date, month_end=True, save=True)
 
     # 计算最小波动纯因子组合的绩效
-    _calc_mvpfp_performance(factor_name=factor_name, start_date=start_date, end_date=end_date)
+    # _calc_mvpfp_performance(factor_name=factor_name, start_date=start_date, end_date=end_date)
 
     # 计算最小波动纯因子组合的汇总绩效
-    _calc_mvpfp_summary(factor_name=factor_name, calc_date=end_date)
+    # _calc_mvpfp_summary(factor_name=factor_name, calc_date=end_date)
 
 
 def _calc_alphafactor_loading(start_date, end_date=None, factor_name=None, multi_proc=False, test=False):
@@ -553,4 +553,5 @@ if __name__ == '__main__':
     # pass
     # _calc_alphafactor_loading(start_date='2018-08-31', end_date='2018-08-31', factor_name='IntradayMomentum', multi_proc=False, test=True)
     # _calc_Orthogonalized_factorloading(factor_name='SmartMoney', start_date='2018-06-29', end_date='2018-06-29', month_end=True, save=True)
-    _calc_MVPFP(factor_name='SmartMoney', start_date='2018-06-29', end_date='2018-06-29', month_end=True, save=True)
+    _calc_MVPFP(factor_name='SmartMoney', start_date='2017-01-01', end_date='2017-11-30', month_end=True, save=True)
+    # test_alpha_factor(factor_name='SmartMoney', start_date='2017-12-01', end_date='2018-04-30')
