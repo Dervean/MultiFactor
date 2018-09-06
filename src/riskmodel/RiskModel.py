@@ -1209,7 +1209,7 @@ class Barra(object):
 
 if __name__ == '__main__':
     BarraModel = Barra()
-    # BarraModel.calc_factorloading('2005-01-01', '2013-11-30')
+    # BarraModel.calc_factorloading('2006-09-05', '2006-12-31')
     # BarraModel._calc_secu_dailyret('2018-07-02')
     # BarraModel._get_cap_weight('2017-12-29')
     # BarraModel._calc_IndFactorloading('2017-12-29')
@@ -1218,9 +1218,9 @@ if __name__ == '__main__':
     # print(BarraModel._get_StyleFactorloading_matrix('2017-12-29').head())
     # print(BarraModel._get_secu_dailyret('2018-01-02').head())
 
-    BarraModel.estimate_factor_ret(start_date='2009-01-01', end_date='2009-12-31')
+    # BarraModel.estimate_factor_ret(start_date='2005-01-01', end_date='2005-12-31')
     # print(BarraModel._naive_factor_covmat('2018-06-29'))
-    # BarraModel.calc_factor_covmat(start_date='2017-02-03', end_date='2018-06-29', calc_mode='cov')
+    BarraModel.calc_factor_covmat(start_date='2008-01-01', end_date='2008-12-31', calc_mode='cov')
     # BarraModel.calc_spec_varmat(start_date='2017-01-17', end_date='2018-06-30', calc_mode='var')
 
     # holding_data = load_holding_data('tmp', 'sh50')

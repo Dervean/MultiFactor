@@ -50,17 +50,32 @@ class MLEV(Factor):
         """
         code = Utils.code_to_symbol(code)
         report_date = Utils.get_fin_report_date(calc_date)
-        # 读取个股最新财务报表摘要数据
-        fin_summary_data = Utils.get_fin_summary_data(code, report_date)
-        # ld为个股长期负债的账面价值, 如果缺失长期负债数据, 则用负债总计代替
-        if fin_summary_data is None:
+
+        # # 读取个股最新财务报表摘要数据
+        # fin_summary_data = Utils.get_fin_summary_data(code, report_date)
+        # # ld为个股长期负债的账面价值, 如果缺失长期负债数据, 则用负债总计代替
+        # if fin_summary_data is None:
+        #     return None
+        # ld = fin_summary_data['TotalNonCurrentLiabilities']
+        # if np.isnan(ld):
+        #     ld = fin_summary_data['TotalLiabilities']
+        # if np.isnan(ld):
+        #     return None
+        # ld *= 10000.0
+
+        # 读取个股最新的主要财务指标数据
+        fin_basic_data = Utils.get_fin_basic_data(code, report_date, 'report_date')
+        if fin_basic_data is None:
             return None
-        ld = fin_summary_data['TotalNonCurrentLiabilities']
-        if np.isnan(ld):
-            ld = fin_summary_data['TotalLiabilities']
-        if np.isnan(ld):
+        # ld为个股长期负债的账面价值(总负债-流动负债); 如果流动负债缺失, 用总负债代替; 如果总负债缺失, 返回None
+        if (not np.isnan(fin_basic_data['TotalLiability'])) and (not np.isnan(fin_basic_data['CurrentLiability'])):
+            ld = fin_basic_data['TotalLiability'] - fin_basic_data['CurrentLiability']
+        elif np.isnan(fin_basic_data['TotalLiability']):
             return None
-        ld *= 10000.0
+        else:
+            ld = fin_basic_data['TotalLiability']
+        ld *= utils_con.FIN_DATA_AMOUNT_UNIT
+
         # pe为优先股账面价值, 对于A股pe设置为0
         pe = 0.0
         # 读取个股市值数据
@@ -338,20 +353,38 @@ class BLEV(Factor):
         """
         code = Utils.code_to_symbol(code)
         report_date = Utils.get_fin_report_date(calc_date)
-        # 读取个股最新财务报表摘要数据
-        fin_summary_data = Utils.get_fin_summary_data(code, report_date)
-        if fin_summary_data is None:
+
+        # # 读取个股最新财务报表摘要数据
+        # fin_summary_data = Utils.get_fin_summary_data(code, report_date)
+        # if fin_summary_data is None:
+        #     return None
+        # be = fin_summary_data['TotalShareholderEquity']
+        # if np.isnan(be):
+        #     return None
+        # if abs(be) < utils_con.TINY_ABS_VALUE:
+        #     return None
+        # ld = fin_summary_data['TotalNonCurrentLiabilities']
+        # if np.isnan(ld):
+        #     ld = fin_summary_data['TotalLiabilities']
+        #     if np.isnan(ld):
+        #         return None
+
+        # 读取个股最新主要财务指标数据
+        fin_basic_data = Utils.get_fin_basic_data(code, report_date, 'report_date')
+        if fin_basic_data is None:
             return None
-        be = fin_summary_data['TotalShareholderEquity']
+        be = fin_basic_data['ShareHolderEquity']
         if np.isnan(be):
             return None
         if abs(be) < utils_con.TINY_ABS_VALUE:
             return None
-        ld = fin_summary_data['TotalNonCurrentLiabilities']
-        if np.isnan(ld):
-            ld = fin_summary_data['TotalLiabilities']
-            if np.isnan(ld):
-                return None
+        if (not np.isnan(fin_basic_data['TotalLiability'])) and (not np.isnan(fin_basic_data['CurrentLiability'])):
+            ld = fin_basic_data['TotalLiability'] - fin_basic_data['CurrentLiability']
+        elif np.isnan(fin_basic_data['TotalLiability']):
+            return None
+        else:
+            ld = fin_basic_data['TotalLiability']
+
         pe = 0
         # blev = (be + pe + ld) / be
         blev = (be + pe + ld) / be
@@ -544,4 +577,4 @@ if __name__ == '__main__':
     # DTOA.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
     # BLEV.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
     # BLEV.calc_secu_factor_loading('600088', '2017-12-29')
-    Leverage.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=False)
+    Leverage.calc_factor_loading(start_date='2006-09-05', end_date='2006-12-31', month_end=False, save=True, multi_proc=False)

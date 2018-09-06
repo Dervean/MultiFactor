@@ -222,7 +222,7 @@ class APM(Factor):
             else:
                 # 采用多进程并行计算
                 q = Manager().Queue()
-                p = Pool(4)     # 最多同时开启4个进程
+                p = Pool(SETTINGS.CONCURRENCY_KERNEL_NUM)     # 最多同时开启4个进程
                 for _, stock_info in stock_basics.iterrows():
                     p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
                 p.close()

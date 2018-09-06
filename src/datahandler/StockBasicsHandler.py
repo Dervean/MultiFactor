@@ -51,7 +51,9 @@ def load_stock_basics(date=None):
     # 勘误表
     Erratas = {'SH601313': {'delist_date': 20180226, 'status': 3},
                'SH601360': {'list_date': 20180228},
-               'SH601268': {'list_date': 19000101, 'delist_date': 19000101}}
+               'SH601268': {'list_date': 19000101, 'delist_date': 19000101},
+               'SHT00018': {'list_date': 19000101, 'delist_date': 19000101},
+               'SH600018': {'list_date': 20000719}}
     for code, errata_info in Erratas.items():
         for column, value in errata_info.items():
             stock_basics.loc[stock_basics[stock_basics['symbol']==code].index, column] = value

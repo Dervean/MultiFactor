@@ -162,7 +162,7 @@ class SmartMoney(Factor):
             else:
                 # 采用多进程并行计算SmartQ因子载荷
                 q = Manager().Queue()   # 队列，用于进程间通信，存储每个进程计算的因子载荷值
-                p = Pool(4)             # 进程池，最多同时开启4个进程
+                p = Pool(SETTINGS.CONCURRENCY_KERNEL_NUM)             # 进程池，最多同时开启4个进程
                 for _, stock_info in stock_basics.iterrows():
                     p.apply_async(cls._calc_factor_loading_proc, args=(stock_info.symbol, calc_date, q,))
                 p.close()
@@ -183,8 +183,8 @@ class SmartMoney(Factor):
                 cls._save_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_factor, 'SmartMoney', factor_type='raw', columns=['date', 'id', 'factorvalue'])
                 cls._save_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), df_std_factor, 'SmartMoney', factor_type='standardized', columns=['date', 'id', 'factorvalue'])
             # 休息300秒
-            logging.info('Suspending for 360s.')
-            time.sleep(360)
+            # logging.info('Suspending for 360s.')
+            # time.sleep(360)
         return dict_factor
 
 
