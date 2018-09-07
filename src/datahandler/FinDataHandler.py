@@ -10,6 +10,7 @@
 from configparser import ConfigParser
 import os
 from src.util.utils import Utils
+import src.settings as SETTINGS
 from pandas import DataFrame
 from jaqs.data.dataapi import DataApi
 import requests
@@ -53,7 +54,8 @@ def load_fin_data_basics():
         fin_header =[data[0] for data in fin_datas]
         df_fin_data = DataFrame(dict_fin_data, columns=fin_header)
         df_fin_data = df_fin_data.sort_values(by=fin_header[0])
-        df_fin_data.to_csv(os.path.join(db_path, '%s.csv' % Utils.code_to_symbol(stock_info.symbol)),index=False)
+        df_fin_data.to_csv(os.path.join(db_path, '%s.csv' % Utils.code_to_symbol(stock_info.symbol)),index=False,
+                           encoding=SETTINGS.DATA_ENCODING_TYPE)
 
 def load_fin_data_cwbbzy():
     """导入上市公司财务报表摘要"""
@@ -98,7 +100,8 @@ def load_fin_data_cwbbzy():
         fin_header = [data[0] for data in fin_datas]
         df_fin_data = DataFrame(dict_fin_data, columns=fin_header)
         df_fin_data = df_fin_data.sort_values(by=fin_header[0])
-        df_fin_data.to_csv(os.path.join(cwbbzy_path, '%s.csv' % Utils.code_to_symbol(stock_info.symbol)), index=False)
+        df_fin_data.to_csv(os.path.join(cwbbzy_path, '%s.csv' % Utils.code_to_symbol(stock_info.symbol)), index=False,
+                           encoding=SETTINGS.DATA_ENCODING_TYPE)
 
 
 if __name__ == '__main__':

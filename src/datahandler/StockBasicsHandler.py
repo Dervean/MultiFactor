@@ -14,6 +14,7 @@ from src.util.utils import Utils
 import pandas as pd
 import requests
 from src.util.dataapi.CDataHandler import CDataHandler
+import src.settings as SETTINGS
 
 def load_stock_basics(date=None):
     """
@@ -64,7 +65,7 @@ def load_stock_basics(date=None):
     cfg.read('config.ini')
     factor_db_path = cfg.get('factor_db', 'db_path')
     stock_basics_path = os.path.join(factor_db_path, cfg.get('stock_basics', 'db_path'), 'stock_basics.csv')
-    stock_basics.to_csv(stock_basics_path, index=False)
+    stock_basics.to_csv(stock_basics_path, index=False, encoding=SETTINGS.DATA_ENCODING_TYPE)
 
 def load_st_info():
     """导入个股st带帽摘帽时间信息"""
@@ -79,7 +80,7 @@ def load_st_info():
     if not os.path.isfile(os.path.join(raw_data_path, 'st_info.csv')):
         print('\033[1;31;40mst_info.csv原始文件不存在.\033[0m')
         return
-    df_st_rawinfo = pd.read_csv(os.path.join(raw_data_path, 'st_info.csv'), header=0)
+    df_st_rawinfo = pd.read_csv(os.path.join(raw_data_path, 'st_info.csv'), header=0, encoding=SETTINGS.DATA_ENCODING_TYPE)
     df_st_rawinfo = df_st_rawinfo[(df_st_rawinfo['st_info'] != '0') & (~df_st_rawinfo['st_info'].isna())]
     df_st_info = pd.DataFrame(columns=['code', 'st_start', 'st_end'])
     for _, st_data in df_st_rawinfo.iterrows():
@@ -105,7 +106,7 @@ def load_st_info():
                     st_end_date = None
         if st_start_date is not None and st_end_date is None:
             df_st_info = df_st_info.append(pd.Series([code, st_start_date, '20301231'], index=['code', 'st_start', 'st_end']), ignore_index=True)
-    df_st_info.to_csv(os.path.join(factor_db_path, st_info_path, 'st_info.csv'), index=False)
+    df_st_info.to_csv(os.path.join(factor_db_path, st_info_path, 'st_info.csv'), index=False, encoding=SETTINGS.DATA_ENCODING_TYPE)
 
 def load_calendar():
     """导入交易日历数据"""
@@ -119,8 +120,7 @@ def load_calendar():
         print('\033[1;31;40m下载交易日历失败.\033[0m')
         return
     calendar_data = pd.Series(calendar_resp.text.split('\n')[1:-1], name='trading_day')
-    calendar_data.to_csv(calendar_path, index=False, header=True)
-
+    calendar_data.to_csv(calendar_path, index=False, header=True, encoding=SETTINGS.DATA_ENCODING_TYPE)
 
 
 if __name__ == '__main__':

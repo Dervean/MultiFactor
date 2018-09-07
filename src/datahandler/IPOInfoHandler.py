@@ -16,7 +16,7 @@ import pandas as pd
 from pandas import DataFrame
 from pandas import Series
 from src.util.utils import Utils
-import time
+import src.settings as SETTINGS
 
 
 def load_ipo_info():
@@ -69,7 +69,7 @@ def load_ipo_info():
                 df_ipo_info = df_ipo_info.append(ipo_info, ignore_index=True)
                 break
     if not df_ipo_info.empty:
-        df_ipo_info.to_csv(db_path.joinpath('ipo_info.csv'), index=False, mode='a', header=False)
+        df_ipo_info.to_csv(db_path.joinpath('ipo_info.csv'), index=False, mode='a', header=False, encoding=SETTINGS.DATA_ENCODING_TYPE)
 
 
 if __name__ == '__main__':

@@ -124,6 +124,9 @@ CONCURRENCY_ON = True
 # 并行计算时使用的核心数
 CONCURRENCY_KERNEL_NUM = 4
 
+# 数据文件编码
+DATA_ENCODING_TYPE = 'utf-8'
+
 
 if __name__ == '__main__':
     pass

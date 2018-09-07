@@ -16,6 +16,7 @@ import re
 import json
 import datetime
 from src.util.utils import Utils
+import src.settings as SETTINGS
 
 
 def download_sw_fyjr_classify():
@@ -38,7 +39,7 @@ def download_sw_fyjr_classify():
     cfg = ConfigParser()
     cfg.read('config.ini')
     file_path = os.path.join(cfg.get('industry_classify', 'raw_data_path'), 'sw_fyjr_classify.csv')
-    df_sw_fyjr.to_csv(file_path, index=False)
+    df_sw_fyjr.to_csv(file_path, index=False, encoding=SETTINGS.DATA_ENCODING_TYPE)
 
 
 def load_industry_classify(standard='sw', date=datetime.date.today()):
@@ -47,15 +48,15 @@ def load_industry_classify(standard='sw', date=datetime.date.today()):
     cfg.read('config.ini')
     # 读取申万一级行业信息
     sw_classify_info_path = os.path.join(cfg.get('factor_db', 'db_path'), cfg.get('industry_classify', 'classify_data_path'), 'classify_standard_sw.csv')
-    df_sw_classify = pd.read_csv(sw_classify_info_path, names=['ind_code', 'ind_name'], header=0)
+    df_sw_classify = pd.read_csv(sw_classify_info_path, names=['ind_code', 'ind_name'], header=0, encoding=SETTINGS.DATA_ENCODING_TYPE)
     # 读取申万非银金融下二级行业信息
     sw_fyjr_classify_path = os.path.join(cfg.get('industry_classify', 'raw_data_path'), 'sw_fyjr_classify.csv')
-    df_sw_fyjr_classify = pd.read_csv(sw_fyjr_classify_path, dtype={'code': object}, header=0)
+    df_sw_fyjr_classify = pd.read_csv(sw_fyjr_classify_path, dtype={'code': object}, header=0, encoding=SETTINGS.DATA_ENCODING_TYPE)
     # 读取股票最新行业分类原始数据，导入本系统的股票申万一级行业分类数据文件
     # 同时把非银金融一级行业替换成二级行业
     raw_data_path = os.path.join(cfg.get('industry_classify', 'raw_data_path'), 'industry_classify_sw.csv')
     classify_data = [['证券代码', '申万行业代码', '申万行业名称']]
-    with open(raw_data_path, 'r', newline='') as f:
+    with open(raw_data_path, 'r', newline='', encoding=SETTINGS.DATA_ENCODING_TYPE) as f:
         f.readline()
         csv_reader = csv.reader(f, delimiter='\t')
         for row in csv_reader:
@@ -67,7 +68,7 @@ def load_industry_classify(standard='sw', date=datetime.date.today()):
             classify_data.append([code, ind_code, ind_name])
     # 添加退市或暂停交易个股的行业分类数据
     delisted_data_path = os.path.join(cfg.get('factor_db', 'db_path'), cfg.get('industry_classify', 'classify_data_path'), 'delisted_classify_sw.csv')
-    with open(delisted_data_path, 'r', newline='') as f:
+    with open(delisted_data_path, 'r', newline='', encoding=SETTINGS.DATA_ENCODING_TYPE) as f:
         f.readline()
         csv_reader = csv.reader(f, delimiter=',')
         for row in csv_reader:
@@ -82,7 +83,7 @@ def load_industry_classify(standard='sw', date=datetime.date.today()):
     ind_files = ['industry_classify_sw.csv', 'industry_classify_sw_{}.csv'.format(Utils.datetimelike_to_str(date, dash=False))]
     for file_name in ind_files:
         classify_data_path = os.path.join(cfg.get('factor_db', 'db_path'), cfg.get('industry_classify', 'classify_data_path'), file_name)
-        with open(classify_data_path, 'w', newline='') as f:
+        with open(classify_data_path, 'w', newline='', encoding=SETTINGS.DATA_ENCODING_TYPE) as f:
             csv_writer = csv.writer(f)
             csv_writer.writerows(classify_data)
     # 检查退市股票行业分类数据中是否已包含所有的已退市股票

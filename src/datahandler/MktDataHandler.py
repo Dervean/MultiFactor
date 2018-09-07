@@ -102,7 +102,7 @@ def _write_1min_FQ_data(mkt_file_path, db_path):
                     if os.path.exists(os.path.join(db_path, pre_strDate)) == False:
                         os.mkdir(os.path.join(db_path, pre_strDate))
                     # if pre_strDate > '2016-10-31':
-                    with open(os.path.join(db_path, pre_strDate, dst_file_name), 'w', newline='') as dst_file:
+                    with open(os.path.join(db_path, pre_strDate, dst_file_name), 'w', newline='', encoding=SETTINGS.DATA_ENCODING_TYPE) as dst_file:
                         dst_file.write(str_header)
                         csv_writer = csv.writer(dst_file)
                         csv_writer.writerows(dst_rows)
@@ -112,7 +112,7 @@ def _write_1min_FQ_data(mkt_file_path, db_path):
             if len(dst_rows) > 0:
                 if os.path.exists(os.path.join(db_path, pre_strDate)) == False:
                     os.mkdir(os.path.join(db_path, pre_strDate))
-                with open(os.path.join(db_path, pre_strDate, dst_file_name), 'w', newline='') as dst_file:
+                with open(os.path.join(db_path, pre_strDate, dst_file_name), 'w', newline='', encoding=SETTINGS.DATA_ENCODING_TYPE) as dst_file:
                     dst_file.write(str_header)
                     csv_writer = csv.writer(dst_file)
                     csv_writer.writerows(dst_rows)
@@ -164,12 +164,12 @@ def load_mkt_daily(is_one_day=False, str_date=None, is_index_data=False):
                         # df_mkt_data = pd.read_csv(mkt_file_path, names=['code', 'date', 'open', 'high', 'low',
                         #                                                 'close', 'vol', 'amount', 'to1', 'to2',
                         #                                                 'factor'], header=0)
-                        df_mkt_data = pd.read_csv(mkt_file_path, names=['code', 'date'], usecols=range(2), header=0)
+                        df_mkt_data = pd.read_csv(mkt_file_path, names=['code', 'date'], usecols=range(2), header=0, encoding=SETTINGS.DATA_ENCODING_TYPE)
                         if datetime.datetime.strptime(str_date, '%Y%m%d').strftime('%Y-%m-%d') not in list(df_mkt_data['date']):
-                            with open(mkt_file_path, 'a') as dst_fq_file:
+                            with open(mkt_file_path, 'a', encoding=SETTINGS.DATA_ENCODING_TYPE) as dst_fq_file:
                                 dst_fq_file.write(','.join(row) + '\n')
                     else:
-                        with open(mkt_file_path, 'w') as dst_fq_file:
+                        with open(mkt_file_path, 'w', encoding=SETTINGS.DATA_ENCODING_TYPE) as dst_fq_file:
                             dst_fq_file.write(','.join(str_header_FQ) + '\n')
                             dst_fq_file.write(','.join(row) + '\n')
                     # 保存非复权日线数据
@@ -185,12 +185,12 @@ def load_mkt_daily(is_one_day=False, str_date=None, is_index_data=False):
                     if os.path.exists(mkt_file_path):
                         # df_mkt_data = pd.read_csv(mkt_file_path, names=['date', 'open', 'high', 'low', 'close', 'vol',
                         #                                                 'amount', 'to1', 'to2'], header=0)
-                        df_mkt_data = pd.read_csv(mkt_file_path, names=['date'], usecols=range(1), header=0)
+                        df_mkt_data = pd.read_csv(mkt_file_path, names=['date'], usecols=range(1), header=0, encoding=SETTINGS.DATA_ENCODING_TYPE)
                         if datetime.datetime.strptime(str_date, '%Y%m%d').strftime('%Y-%m-%d') not in list(df_mkt_data['date']):
-                            with open(mkt_file_path, 'a') as dst_nofq_file:
+                            with open(mkt_file_path, 'a', encoding=SETTINGS.DATA_ENCODING_TYPE) as dst_nofq_file:
                                 dst_nofq_file.write(','.join(mkt_data_row) + '\n')
                     else:
-                        with open(mkt_file_path, 'w') as dst_nofq_file:
+                        with open(mkt_file_path, 'w', encoding=SETTINGS.DATA_ENCODING_TYPE) as dst_nofq_file:
                             dst_nofq_file.write(','.join(str_header_NoFQ) + '\n')
                             dst_nofq_file.write(','.join(mkt_data_row) + '\n')
     elif is_index_data:
@@ -213,12 +213,12 @@ def load_mkt_daily(is_one_day=False, str_date=None, is_index_data=False):
                         nofq_row = row[1:] + ['0', '0']
                         # nofq_row.extend(['0', '0'])
                         dst_rows_nofq.append(nofq_row)
-                with open(os.path.join(db_path_fq, dst_file_name), 'w', newline='') as dst_fq_file:
+                with open(os.path.join(db_path_fq, dst_file_name), 'w', newline='', encoding=SETTINGS.DATA_ENCODING_TYPE) as dst_fq_file:
                     csv_writer = csv.writer(dst_fq_file)
                     fq_header = raw_header + ['流通盘换手率', '全流通换手率', '复权系数']
                     csv_writer.writerow(fq_header)
                     csv_writer.writerows(dst_rows_fq)
-                with open(os.path.join(db_path_nofq, dst_file_name), 'w', newline='') as dst_nofq_file:
+                with open(os.path.join(db_path_nofq, dst_file_name), 'w', newline='', encoding=SETTINGS.DATA_ENCODING_TYPE) as dst_nofq_file:
                     csv_writer = csv.writer(dst_nofq_file)
                     nofq_header = raw_header[1:] + ['流通盘换手率', '全流通换手率']
                     csv_writer.writerow(nofq_header)
@@ -238,7 +238,7 @@ def load_mkt_daily(is_one_day=False, str_date=None, is_index_data=False):
                     # 导入复权行情至复权行情因子库
                     if not os.path.exists(db_path_fq):
                         os.mkdir(db_path_fq)
-                    with open(os.path.join(db_path_fq, dst_file_name), 'w', newline='') as dstFQFile:
+                    with open(os.path.join(db_path_fq, dst_file_name), 'w', newline='', encoding=SETTINGS.DATA_ENCODING_TYPE) as dstFQFile:
                         dstFQFile.write(rawFile.read())
                     # 将复权行情转换为非复权行情，并导入至非复权行情因子库
                     rawFile.seek(0, 0)
@@ -260,7 +260,7 @@ def load_mkt_daily(is_one_day=False, str_date=None, is_index_data=False):
                             fclose = float(row[5])/factor
                             dstRows.append([mkt_date, str(round(fopen,2)), str(round(fhigh,2)), str(round(flow,2)),
                                             str(round(fclose,2)), row[6], row[7], row[8], row[9]])
-                    with open(os.path.join(db_path_nofq, dst_file_name), 'w', newline='') as dstNoFQFile:
+                    with open(os.path.join(db_path_nofq, dst_file_name), 'w', newline='', encoding=SETTINGS.DATA_ENCODING_TYPE) as dstNoFQFile:
                         csvWriter = csv.writer(dstNoFQFile)
                         csvWriter.writerow(head_row)
                         csvWriter.writerows(dstRows)
@@ -286,7 +286,7 @@ def calc_suspension_info(date):
     cfg = ConfigParser()
     cfg.read('config.ini')
     suspension_info_path = os.path.join(SETTINGS.FACTOR_DB_PATH, cfg.get('suspension_info', 'info_path'), '{}.csv'.format(Utils.datetimelike_to_str(date, dash=False)))
-    df_stock_basics.to_csv(suspension_info_path, index=False, encoding='utf-8')
+    df_stock_basics.to_csv(suspension_info_path, index=False, encoding=SETTINGS.DATA_ENCODING_TYPE)
 
 def calc_future_ret(date, ndays):
     """
@@ -322,7 +322,7 @@ def calc_future_ret(date, ndays):
     cfg = ConfigParser()
     cfg.read('config.ini')
     future_ret_path = os.path.join(SETTINGS.FACTOR_DB_PATH, cfg.get('future_ret', 'ret_path'), '{}.csv'.format(Utils.datetimelike_to_str(trading_days_series[0], dash=False)))
-    df_future_ret.to_csv(future_ret_path, index=False, encoding='utf-8')
+    df_future_ret.to_csv(future_ret_path, index=False, encoding=SETTINGS.DATA_ENCODING_TYPE)
 
 if __name__ == '__main__':
     pass
