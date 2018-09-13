@@ -13,7 +13,8 @@ BENCHMARK = 'SH000905'
 FACTOR_PERFORMANCE_HEADER = {'daily_performance': ['date', 'daily_ret', 'nav', 'accu_ret'],
                              'monthly_performance': ['date', 'monthly_ret'],
                              'summary_performance': ['date', 'total_ret', 'annual_ret', 'max_drawdown', 'volatility',
-                                                     'monthly_winrate', 'IR', 'type']
+                                                     'monthly_winrate', 'IR', 'type'],
+                             'factor_return': ['date', 'factor_ret']
                              }
 
 # alpha因子汇总绩效的时间区间类型

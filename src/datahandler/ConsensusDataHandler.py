@@ -55,7 +55,7 @@ def load_predictedearning_data(date=None):
     else:
         str_date = str(date).replace('-', '')
         raw_data_path = os.path.join(cfg.get('consensus_data', 'consensus_raw_path'), 'predicted_earnings_{}.csv'.format(str_date))
-    df_predictedearnings = pd.read_csv(raw_data_path, header=0, index_col=0, encoding='utif-8')
+    df_predictedearnings = pd.read_csv(raw_data_path, header=0, index_col=0, encoding=SETTINGS.DATA_ENCODING_TYPE)
     for strdate in df_predictedearnings.columns.values.tolist():
         print('Loading Predicted Earnings data of {}.'.format(strdate))
         predictedearnings_data = df_predictedearnings[strdate]
@@ -84,8 +84,8 @@ def load_predictedgrowth_data(date=None):
         str_date = str(date).replace('-', '')
         raw_yoydata_path = os.path.join(cfg.get('consensus_data', 'consensus_raw_path'), 'consensus_growth_yoy_{}.csv'.format(str_date))
         raw_cagrdata_path = os.path.join(cfg.get('consensus_data', 'consensus_raw_path'), 'consensus_growth_cagr_{}.csv'.format(str_date))
-    df_growth_yoy = pd.read_csv(raw_yoydata_path, header=0, index_col=0, encoding='utf-8')
-    df_growth_cagr = pd.read_csv(raw_cagrdata_path, header=0, index_col=0, encoding='utf-8')
+    df_growth_yoy = pd.read_csv(raw_yoydata_path, header=0, index_col=0, encoding=SETTINGS.DATA_ENCODING_TYPE)
+    df_growth_cagr = pd.read_csv(raw_cagrdata_path, header=0, index_col=0, encoding=SETTINGS.DATA_ENCODING_TYPE)
     if df_growth_cagr.columns.values.tolist() != df_growth_yoy.columns.values.tolist():
         print('columns of yoy data is not same to cagr data!')
         return
@@ -105,12 +105,12 @@ def load_predictedgrowth_data(date=None):
 
 if __name__ == '__main__':
     pass
-    # load_predictedearning_data(2007)
-    # load_predictedgrowth_data(2007)
+    # load_predictedearning_data(201808)
+    # load_predictedgrowth_data(201808)
 
     # ----------填充predicted earnings数据-----------------
-    # start_date = '2004-12-31'
-    # end_date = '2007-12-28'
+    # start_date = '2018-06-29'
+    # end_date = '2018-08-31'
     # trading_days_series = Utils.get_trading_days(start_date, end_date)
     # predictedearning_data_path = '/Volumes/DB/FactorDB/ElementaryFactor/consensus_data/predicted_earnings'
     # df_predictedearning = pd.DataFrame()
@@ -125,8 +125,8 @@ if __name__ == '__main__':
     # ---------------------------------------------------
 
     # ----------填充predicted growth数据-----------------
-    # start_date = '2004-12-31'
-    # end_date = '2007-12-28'
+    # start_date = '2018-06-29'
+    # end_date = '2018-08-31'
     # trading_days_series = Utils.get_trading_days(start_date, end_date)
     # predicted_growth_path = '/Volumes/DB/FactorDB/ElementaryFactor/consensus_data/growth_data'
     # df_predictedgrowth = pd.DataFrame()

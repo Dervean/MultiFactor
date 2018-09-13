@@ -9,6 +9,7 @@
 
 # 因子数据库根目录
 FACTOR_DB_PATH = '/Volumes/DB/FactorDB'
+# FACTOR_DB_PATH = 'F:/share/project/FactorDB'
 
 # 因子数据库文件夹结构
 FACTOR_DB_DIR = {
@@ -16,13 +17,21 @@ FACTOR_DB_DIR = {
                                'APM': {
                                       'mvpfp': None,
                                       'orthogonalized': None,
+                                      'performance': None,
                                       'raw': None,
                                       'standardized': None
                                       },
-                               'CYQ': None,
+                               'CYQ': {
+                                      'mvpfp': None,
+                                      'orthogonalized': None,
+                                      'performance': None,
+                                      'raw': None,
+                                      'standardized': None
+                                      },
                                'IntradayMomentum': {
                                                    'mvpfp': None,
                                                    'orthogonalized': None,
+                                                   'performance': None,
                                                    'raw': None,
                                                    'standardized': None
                                                    },
@@ -55,7 +64,8 @@ FACTOR_DB_DIR = {
                                     'suspension_info': None
                                     },
                 'portfolio': {
-                             'holdings': None
+                             'holdings': None,
+                             'opt_port': None
                              },
                 'RiskFactor': {
                               'Beta': {
@@ -119,7 +129,7 @@ FACTOR_DB_DIR = {
                 }
 
 # 是否进行并行计算
-CONCURRENCY_ON = True
+CONCURRENCY_ON = False
 
 # 并行计算时使用的核心数
 CONCURRENCY_KERNEL_NUM = 4

@@ -31,6 +31,8 @@ import datetime
 import math
 from src.portfolio.portfolio import CWeightHolding, CPortHolding, load_holding_data
 
+import time
+
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
@@ -244,7 +246,14 @@ class Barra(object):
             end_date = Utils.to_date(end_date)
             trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
 
+        k = 1
+
         for calc_date in trading_days_series:
+
+            if 0 == (k % 100):
+                time.sleep(240)
+            k += 1
+
             logging.info('Calc specific risk variance matrix of {}.'.format(Utils.datetimelike_to_str(calc_date, dash=True)))
             # 计算特质收益率朴素方差数据, 并保存
             naive_specvar = self._naive_spec_var(calc_date)
@@ -1209,8 +1218,8 @@ class Barra(object):
 
 if __name__ == '__main__':
     BarraModel = Barra()
-    # BarraModel.calc_factorloading('2006-09-05', '2006-12-31')
-    # BarraModel._calc_secu_dailyret('2018-07-02')
+    # BarraModel.calc_factorloading('2018-07-01', '2018-08-31')
+    # BarraModel._calc_secu_dailyret('2018-09-03')
     # BarraModel._get_cap_weight('2017-12-29')
     # BarraModel._calc_IndFactorloading('2017-12-29')
     # BarraModel._calc_StyleFactorloading('2017-12-29')
@@ -1218,10 +1227,10 @@ if __name__ == '__main__':
     # print(BarraModel._get_StyleFactorloading_matrix('2017-12-29').head())
     # print(BarraModel._get_secu_dailyret('2018-01-02').head())
 
-    # BarraModel.estimate_factor_ret(start_date='2005-01-01', end_date='2005-12-31')
+    # BarraModel.estimate_factor_ret(start_date='2018-07-01', end_date='2018-08-31')
     # print(BarraModel._naive_factor_covmat('2018-06-29'))
-    BarraModel.calc_factor_covmat(start_date='2008-01-01', end_date='2008-12-31', calc_mode='cov')
-    # BarraModel.calc_spec_varmat(start_date='2017-01-17', end_date='2018-06-30', calc_mode='var')
+    # BarraModel.calc_factor_covmat(start_date='2018-07-01', end_date='2018-08-31', calc_mode='cov')
+    # BarraModel.calc_spec_varmat(start_date='2018-07-01', end_date='2018-08-31', calc_mode='var')
 
     # holding_data = load_holding_data('tmp', 'sh50')
     # risk_contribution = BarraModel.risk_contribution(holding_data, '2018-06-29')

@@ -11,6 +11,8 @@ import pandas as pd
 import os
 import src.settings as SETTINGS
 import src.portfolio.cons as portfolio_ct
+import src.util.cons as util_ct
+from src.util.utils import Utils
 
 
 class CWeightHolding(object):
@@ -67,33 +69,45 @@ class CWeightHolding(object):
             2. weight: 持仓权重
         :return:
         """
+        if (self.date is not None) and data['date'] != self.date:
+            raise ValueError("添加持仓数据的日期(%s)与原持仓日期(%s)不一致." %
+                             (Utils.datetimelike_to_str(data['date'], dash=False),
+                              Utils.datetimelike_to_str(self.date, dash=False)))
         if data['code'] in self._data['code'].values:
             idx = self._data[self._data['code'] == data['code']].index
             self._data.loc[idx, 'weight'] += data['weight']
         else:
             self._data = self._data.append(data, ignore_index=True)
 
-    def from_dataframe(self, df_holdingdata):
+    def from_dataframe(self, df_holdingdata, cancel_tinyweight=False):
         """
         从给定的pd.DataFrame中导入持仓数据
         Parameters:
         --------
         :param df_holdingdata: pd.DataFrame
             持仓数据
+        :param cancel_tinyweight: bool
+            是否剔除小权重数据, 默认为False
         :return:
         """
         if not all([col in df_holdingdata.columns for col in portfolio_ct.WEIGHTHOLDING_DATA_HEADER]):
             raise ValueError("持仓数据应包含%s." % str(portfolio_ct.WEIGHTHOLDING_DATA_HEADER))
+
+        if cancel_tinyweight:
+            df_holdingdata = df_holdingdata[abs(df_holdingdata['weight']) > util_ct.TINY_ABS_VALUE]
+
         for _, holding_data in df_holdingdata.iterrows():
             self.append(holding_data)
 
-    def from_file(self, holdingfile_path):
+    def from_file(self, holdingfile_path, cancel_tinyweight=False):
         """
         从持仓文件导入持仓数据
         Parameters:
         --------
         :param holdingfile_path: str
             持仓文件路径
+        :param cancel_tinyweight: bool
+            是否剔除小权重个股, 默认False
         :return:
         --------
             持仓文件的第一列应该为日期数据
@@ -103,6 +117,9 @@ class CWeightHolding(object):
         df_holding = pd.read_csv(holdingfile_path, header=0, parse_dates=[0])
         if not all([col in df_holding.columns for col in portfolio_ct.WEIGHTHOLDING_DATA_HEADER]):
             raise ValueError("持仓数据应包含%s." % str(portfolio_ct.WEIGHTHOLDING_DATA_HEADER))
+
+        if cancel_tinyweight:
+            df_holding = df_holding[abs(df_holding['weight']) > util_ct.TINY_ABS_VALUE]
 
         for _, holding_data in df_holding.iterrows():
             self.append(holding_data)
@@ -171,33 +188,45 @@ class CPortHolding(object):
             2. volume: 持仓量
         :return:
         """
+        if (self.date is not None) and data['date'] != self.date:
+            raise ValueError("添加持仓数据的日期(%)与原持仓日期(%s)不一致." %
+                             (Utils.datetimelike_to_str(data['date'], dash=False),
+                              Utils.datetimelike_to_str(self.date, dash=False)))
         if data['code'] in self._data['code'].values:
             idx = self._data[self._data['code'] == data['code']].index
             self._data.loc[idx, 'volume'] += data['volume']
         else:
             self._data.append(data, ignore_index=True)
 
-    def from_dataframe(self, df_holdingdata):
+    def from_dataframe(self, df_holdingdata, cancel_tinyweight=False):
         """
         从给定的pd.DataFrame中导入持仓数据
         Parameters:
         --------
         :param df_holdingdata: pd.DataFrame
             持仓数据
+        :param cancel_tinyweight: bool
+            是否剔除小权重个股, 默认False
         :return:
         """
         if not all([col in df_holdingdata.columns for col in portfolio_ct.PORTHOLDING_DATA_HEADER]):
             raise ValueError("持仓数据应包含%s." % str(portfolio_ct.PORTHOLDING_DATA_HEADER))
+
+        if cancel_tinyweight:
+            df_holdingdata = df_holdingdata[abs(df_holdingdata['weight']) > util_ct.TINY_ABS_VALUE]
+
         for _, holding_data in df_holdingdata.iterrows():
             self.append(holding_data)
 
-    def from_file(self, holdingfile_path):
+    def from_file(self, holdingfile_path, cancel_tinyweight=False):
         """
         从持仓文件导入持仓数据
         Parameters:
         --------
         :param holdingfile_path: str
             持仓文件路径
+        :param cancel_tinyweight: bool
+            是否剔除小权重个股, 默认False
         :return:
         --------
             持仓文件的第一列应该为日期数据
@@ -207,6 +236,9 @@ class CPortHolding(object):
         df_holding = pd.read_csv(holdingfile_path, header=0, parse_dates=[0])
         if not all([col in df_holding.columns for col in portfolio_ct.PORTHOLDING_DATA_HEADER]):
             raise ValueError("持仓数据应包含%s." % str(portfolio_ct.PORTHOLDING_DATA_HEADER))
+
+        if cancel_tinyweight:
+            df_holding = df_holding[abs(df_holding['weight']) > util_ct.TINY_ABS_VALUE]
 
         for _, holding_data in df_holding.iterrows():
             self.append(holding_data)
@@ -245,6 +277,11 @@ class CPortfolio(object):
     def holdingtype(self):
         return self._holdingtype
 
+    @property
+    def count(self):
+        """持仓数量"""
+        return len(self._holdings)
+
     def append_holding(self, holding_data):
         """
         添加持仓数据
@@ -262,13 +299,15 @@ class CPortfolio(object):
             raise ValueError("持仓数据不能为空.")
         self._holdings[holding_data.date] = holding_data
 
-    def load_holdings_fromfile(self, holdingfile_path):
+    def load_holdings_fromfile(self, holdingfile_path, cancel_tinyweight=False):
         """
         从文件导入组合持仓数据
         Parameters:
         --------
         :param holdingfile_path: str
             持仓文件的路径
+        :param cancel_tinyweight: bool
+            是否剔除小权重个股, 默认为False
         :return: 导入持仓数据至self.__holdings
         --------
         持仓文件格式: .csv文件, 各列数据为：
@@ -284,7 +323,7 @@ class CPortfolio(object):
             holding_data = CPortHolding()
         else:
             raise ValueError("持仓类型必须为'weight_holding'或'port_holding'.")
-        holding_data.from_file(holdingfile_path)
+        holding_data.from_file(holdingfile_path, cancel_tinyweight)
         self.append_holding(holding_data)
 
 

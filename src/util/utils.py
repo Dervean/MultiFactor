@@ -1187,7 +1187,7 @@ class Utils(object):
                 df_timeseries_data = None
             else:
                 df_timeseries_data = pd.read_csv(data_file_path, parse_dates=[0], header=0)
-                if df_timeseries_data.empty():
+                if df_timeseries_data.empty:
                     df_timeseries_data = None
                 else:
                     df_timeseries_data.sort_values(by='date', inplace=True)

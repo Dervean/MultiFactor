@@ -42,7 +42,7 @@ def copy_file(file_fullpath, start_date, end_date):
     if os.path.isfile(file_fullpath):
         if os.path.splitext(file_fullpath)[1] == '.csv':
             str_date = file_date(file_fullpath)
-            if str_date >= str_date and str_date <= end_date:
+            if str_date >= start_date and str_date <= end_date:
                 shutil.copyfile(file_fullpath, dst_fullpath)
     elif os.path.isdir(file_fullpath):
         if not os.path.exists(dst_fullpath):
