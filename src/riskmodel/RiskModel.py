@@ -1232,9 +1232,9 @@ if __name__ == '__main__':
     # BarraModel.calc_factor_covmat(start_date='2018-07-01', end_date='2018-08-31', calc_mode='cov')
     # BarraModel.calc_spec_varmat(start_date='2018-07-01', end_date='2018-08-31', calc_mode='var')
 
-    # holding_data = load_holding_data('tmp', 'sh50')
-    # risk_contribution = BarraModel.risk_contribution(holding_data, '2018-06-29')
-    # print(risk_contribution)
+    holding_data = load_holding_data('APM', 'APM_20111230')
+    risk_contribution = BarraModel.risk_contribution(holding_data, '2011-12-30')
+    print(risk_contribution)
 
     # holding_data = CWeightHolding()
     # mvpfp_filepath = os.path.join(SETTINGS.FACTOR_DB_PATH, 'AlphaFactor/SmartMoney/mvpfp/SmartMoney_20180629.csv')
