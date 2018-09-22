@@ -48,11 +48,16 @@ INTRADAYMOMENTUM_CT = DottableDict({'days_num': 20,                             
 #                        'backtest_path': 'FactorTest/CYQ'                    # 历史回测结果文件的相对路径名
 #                        })
 
-# CYQ筹码分布因子的配置参数
-CYQ_CT = DottableDict({'db_file': 'Sentiment/CYQ/',                     # 筹码分布因子载荷的保存文件相对路径
-                       'CYQ_rp_file': 'cyq_rp/CYQ_rp',                  # 筹码分布相对价格因子保存文件的相对路径
-                       'backtext_path': 'FactorBackTest/CYQ'            # 历史回测结果文件的相对路径
-                       })
+# # CYQ筹码分布因子的配置参数
+# CYQ_CT = DottableDict({'db_file': 'AlphaFactor/CYQ/',                     # 筹码分布因子载荷的保存文件相对路径
+#                        'CYQ_rp_file': 'cyq_rp/CYQ_rp',                  # 筹码分布相对价格因子保存文件的相对路径
+#                        'backtext_path': 'FactorBackTest/CYQ'            # 历史回测结果文件的相对路径
+#                        })
+
+# CYQRP筹码分布因子的配置参数
+CYQRP_CT = DottableDict({'db_file': 'AlphaFactor/CYQ/CYQRP/',
+                         'listed_days': 90})
+
 # 规模因子的配置参数
 SCALE_CT = DottableDict({'db_file': 'ElementaryFactor/Scale/Scale'})
 # 传统动量因子的配置参数
@@ -71,7 +76,7 @@ GROWTH_CT = DottableDict({'db_file': 'Growth/Growth',                   # 因子
                           })
 
 # alpha因子列表
-ALPHA_FACTORS = ['APM']
+ALPHA_FACTORS = ['APM', 'IntradayMomentum']
 
 # 因子载荷类型
 FACTORLOADING_TYPE = {'RAW': 'raw',                         # 原始因子载荷

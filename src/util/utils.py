@@ -1196,6 +1196,8 @@ class Utils(object):
                 if df_timeseries_data is None:
                     df_timeseries_data = pd.DataFrame().append(timeseries_data, ignore_index=True)
                 else:
+                    if not isinstance(timeseries_data['date'], pd.Timestamp):
+                        timeseries_data['date'] = pd.Timestamp(timeseries_data['date'])
                     if timeseries_data['date'].to_pydatetime() in df_timeseries_data['date'].dt.to_pydatetime():
                         idx = df_timeseries_data[df_timeseries_data['date']==timeseries_data['date']].index
                         df_timeseries_data.drop(index=idx, inplace=True)

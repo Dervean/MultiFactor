@@ -24,6 +24,7 @@ from src.portfolio.portfolio import CWeightHolding, CPortfolio
 from src.alphamodel.alphafactors.SmartMoney import SmartMoney
 from src.alphamodel.alphafactors.APM import APM
 from src.alphamodel.alphafactors.IntradayMomentum import IntradayMomentum
+from src.alphamodel.alphafactors.CYQRP import CYQRP
 from multiprocessing import Pool, Manager
 
 
@@ -332,14 +333,24 @@ def _calc_MVPFP(factor_name, start_date, end_date=None, month_end=True, save=Fal
 
         x_alpha = np.array(targetfactor_loading)
 
+        w_upper = cvx.Parameter(nonneg=True)
+        w_upper.value = 0.01
         constraints = [w*F == 0,
                        w*x_alpha == 1,
-                       cvx.abs(w) <= 0.01]
+                       cvx.abs(w) <= w_upper]
         prob = cvx.Problem(cvx.Minimize(risk), constraints)
 
         # prob = cvx.Problem(cvx.Minimize(cvx.sum(cvx.abs(w*F))), [w*x_alpha == 1])
 
-        prob.solve(verbose=True)
+        while True:
+            prob.solve(verbose=True)
+            if cvx.INFEASIBLE == prob.status or cvx.UNBOUNDED == prob.status:
+                w_upper.value += 0.005
+                if w_upper.value > 0.05:
+                    raise cvx.SolverError("%s优化计算%s最小波动纯因子组合失败." % (Utils.datetimelike_to_str(calc_date), factor_name))
+            else:
+                break
+
         # if prob.status == cvx.OPTIMAL:
 
         datelabel = Utils.datetimelike_to_str(calc_date, dash=False)
@@ -725,8 +736,8 @@ def get_alphamodel_data(date, factors=None):
 if __name__ == '__main__':
     # pass
     # _calc_alphafactor_loading(start_date='2018-08-31', end_date='2018-08-31', factor_name='SmartMoney', multi_proc=False, test=True)
-    # _calc_Orthogonalized_factorloading(factor_name='IntradayMomentum', start_date='2007-12-28', end_date='2018-08-31', month_end=True, save=True)
-    # _calc_MVPFP(factor_name='IntradayMomentum', start_date='2007-12-28', end_date='2018-08-31', month_end=True, save=True)
+    # _calc_Orthogonalized_factorloading(factor_name='CYQRP', start_date='2007-12-28', end_date='2018-08-31', month_end=True, save=True)
+    _calc_MVPFP(factor_name='CYQRP', start_date='2007-12-28', end_date='2018-08-31', month_end=True, save=True)
     # test_alpha_factor(factor_name='SmartMoney', start_date='2017-12-01', end_date='2018-04-30')
-    _calc_mvpfp_performance('IntradayMomentum', '2007-12-28', '2018-08-31')
-    # _calc_mvpfp_summary('APM', start_date='2012-12-31', end_date='2018-08-31', month_end=True)
+    # _calc_mvpfp_performance('IntradayMomentum', '2007-12-28', '2018-08-31')
+    # _calc_mvpfp_summary('SmartMoney', start_date='2012-12-31', end_date='2018-08-31', month_end=True)

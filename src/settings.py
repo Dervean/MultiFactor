@@ -22,11 +22,14 @@ FACTOR_DB_DIR = {
                                       'standardized': None
                                       },
                                'CYQ': {
-                                      'mvpfp': None,
-                                      'orthogonalized': None,
-                                      'performance': None,
-                                      'raw': None,
-                                      'standardized': None
+                                      'CYQRP': {
+                                               'mvpfp': None,
+                                               'orthogonalized': None,
+                                               'performance': None,
+                                               'raw': None,
+                                               'standardized': None,
+                                               'secu_cyq': None
+                                               }
                                       },
                                'IntradayMomentum': {
                                                    'mvpfp': None,

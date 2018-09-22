@@ -30,13 +30,13 @@ def load_cap_struct(date):
     del df_cap_struct['mkt']
     # 先保存全部股本结构数据为一个文件
     df_cap_struct.to_csv(os.path.join(db_path, 'cap_struct.csv'), index=False,
-                         header=['代码', '变更日期', '变更原因', '总股本', '流通A股', '流通B股', '流通H股'])
+                         header=['代码', '变更日期', '变更原因', '总股本', '流通A股', '流通B股', '流通H股'], encoding=SETTINGS.DATA_ENCODING_TYPE)
     # 然后每个个股分别保存一个股本结构数据文件
     codes = df_cap_struct.code.unique()
     for code in codes:
         # print('processing capital structure data of %s.' % code)
         df_single_cap_struct = df_cap_struct[df_cap_struct.code == code]
-        df_single_cap_struct.to_csv(os.path.join(db_path, code+'.csv'), index=False, encodi=SETTINGS.DATA_ENCODING_TYPE,
+        df_single_cap_struct.to_csv(os.path.join(db_path, code+'.csv'), index=False, encoding=SETTINGS.DATA_ENCODING_TYPE,
                                     header=['代码', '变更日期', '变更原因', '总股本', '流通A股', '流通B股', '流通H股'])
 
 

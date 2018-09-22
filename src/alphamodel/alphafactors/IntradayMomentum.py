@@ -395,6 +395,7 @@ class IntradayMomentum(Factor):
             4. IC3, 第3小时动量因子IC
             5. IC4, 第4小时动量因子IC
         """
+        calc_date = Utils.to_date(calc_date)
         # 读取日内各时段动量因子载荷数据
         df_period_mom = cls._get_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False),
                                                 factor_name='periodmomentum', factor_type='raw', drop_na=True)
@@ -416,7 +417,7 @@ class IntradayMomentum(Factor):
         # 计算Rank IC值
         df_period_mom.drop(columns=['date', 'id', 'm_normal'], inplace=True)
         df_spearman_corr = df_period_mom.corr(method='spearman')
-        rank_IC = df_spearman_corr.loc['ret', ['m0', 'm1', 'm2', 'm3', 'm4']]
+        rank_IC = df_spearman_corr.loc['ret', ['m0', 'm1', 'm2', 'm3', 'm4']].round(4)
         rank_IC['date'] = calc_date
         # 保存Rank IC值
         ic_filepath = os.path.join(SETTINGS.FACTOR_DB_PATH, alphafactor_ct.INTRADAYMOMENTUM_CT['factor_ic_file'])
@@ -549,4 +550,5 @@ def mom_backtest(start, end):
 if __name__ == '__main__':
     # pass
     # IntradayMomentum.calc_factor_loading(start_date='2013-01-01', end_date='2017-12-31', month_end=True, save=True, synthetic_factor=True)
-    mom_backtest('2013-01-04', '2017-12-31')
+    # mom_backtest('2013-01-04', '2017-12-31')
+    IntradayMomentum._calc_periodmomentum_ic('2018-07-31', 'month')
