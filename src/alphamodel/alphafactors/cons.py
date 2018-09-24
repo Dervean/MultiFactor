@@ -58,25 +58,13 @@ INTRADAYMOMENTUM_CT = DottableDict({'days_num': 20,                             
 CYQRP_CT = DottableDict({'db_file': 'AlphaFactor/CYQ/CYQRP/',
                          'listed_days': 90})
 
-# 规模因子的配置参数
-SCALE_CT = DottableDict({'db_file': 'ElementaryFactor/Scale/Scale'})
-# 传统动量因子的配置参数
-MOMENTUM_CT = DottableDict({'short_term_days': '20|60',                 # 短期动量交易日天数
-                            'long_term_days': '120|240',                # 长期动量交易日天数
-                            'db_file': 'Momentum/Momentum/Momentum',    # 因子载荷的保存文件路径（相对于因子数据库根目录的相对路径）
-                            'backtest_path': 'FactorBackTest/Momentum'  # 历史回测结果文件的保存路径（相对于因子数据库根目录的相对路径）
-                            })
-# 价值因子的配置参数
-VALUE_CT = DottableDict({'db_file': 'Value/Value',                      # 因子载荷的保存文件相对路径
-                         'backtest_path': 'FactorBackTest/Value'        # 历史回测结果文件的相对保存路径
-                         })
-# 成长因子的配置参数
-GROWTH_CT = DottableDict({'db_file': 'Growth/Growth',                   # 因子载荷的保存文件相对路径
-                          'backtest_path': 'FactorBackTest/Growth'      # 历史回测结果文件的相对保存路径
-                          })
+# INTRADAYLIQUIDITY日内流动性因子的配置参数
+INTRADAYLIQUIDITY = DottableDict({'db_file': 'AlphaFactor/IntradayLiquidity',
+                                  'days_num': 20,
+                                  'listed_days': 90})
 
 # alpha因子列表
-ALPHA_FACTORS = ['APM', 'IntradayMomentum']
+ALPHA_FACTORS = ['APM', 'IntradayMomentum', 'CYQRP']
 
 # 因子载荷类型
 FACTORLOADING_TYPE = {'RAW': 'raw',                         # 原始因子载荷

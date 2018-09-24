@@ -548,9 +548,7 @@ class Utils(object):
                                          Utils.code_to_symbol(code))
             if os.path.isfile(mkt_file_path):
                 # 读取个股每天的分钟行情数据
-                df = pd.read_csv(mkt_file_path,
-                                 names=['code', 'time', 'open', 'high', 'low', 'close', 'volume', 'amount', 'factor'],
-                                 skiprows=[0])
+                df = pd.read_csv(mkt_file_path, names=ct.MKT_MIN_FQ_HEADER, skiprows=[0])
                 # 计算每分钟的涨跌幅，每天第一分钟的涨跌幅=close/open-1
                 df['ret'] = df['close'] / df['close'].shift(1) - 1.0
                 df.ix[0, 'ret'] = df.ix[0, 'close'] / df.ix[0, 'open'] - 1.0

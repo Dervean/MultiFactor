@@ -25,6 +25,7 @@ from src.alphamodel.alphafactors.SmartMoney import SmartMoney
 from src.alphamodel.alphafactors.APM import APM
 from src.alphamodel.alphafactors.IntradayMomentum import IntradayMomentum
 from src.alphamodel.alphafactors.CYQRP import CYQRP
+from src.alphamodel.alphafactors.IntradayLiquidity import IntradayLiquidity
 from multiprocessing import Pool, Manager
 
 
@@ -735,9 +736,9 @@ def get_alphamodel_data(date, factors=None):
 
 if __name__ == '__main__':
     # pass
-    # _calc_alphafactor_loading(start_date='2018-08-31', end_date='2018-08-31', factor_name='SmartMoney', multi_proc=False, test=True)
+    _calc_alphafactor_loading(start_date='2018-08-31', end_date='2018-08-31', factor_name='IntradayLiquidity', multi_proc=True, test=True)
     # _calc_Orthogonalized_factorloading(factor_name='CYQRP', start_date='2007-12-28', end_date='2018-08-31', month_end=True, save=True)
-    _calc_MVPFP(factor_name='CYQRP', start_date='2007-12-28', end_date='2018-08-31', month_end=True, save=True)
+    # _calc_MVPFP(factor_name='CYQRP', start_date='2007-12-28', end_date='2018-08-31', month_end=True, save=True)
     # test_alpha_factor(factor_name='SmartMoney', start_date='2017-12-01', end_date='2018-04-30')
     # _calc_mvpfp_performance('IntradayMomentum', '2007-12-28', '2018-08-31')
-    # _calc_mvpfp_summary('SmartMoney', start_date='2012-12-31', end_date='2018-08-31', month_end=True)
+    # _calc_mvpfp_summary('CYQRP', start_date='2012-12-31', end_date='2018-08-31', month_end=True)

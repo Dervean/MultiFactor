@@ -138,7 +138,7 @@ class IntradayMomentum(Factor):
         :param q: 队列，用于进程间通信
         :return: 添加因子载荷至队列中
         """
-        logging.info('[%s] Calc Intaday Momentum of %s.' % (Utils.datetimelike_to_str(calc_date), code))
+        logging.info('[%s] Calc Intraday Momentum of %s.' % (Utils.datetimelike_to_str(calc_date), code))
         momentum_data = None
         try:
             momentum_data = cls._calc_factor_loading(code, calc_date)
