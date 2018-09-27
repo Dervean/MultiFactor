@@ -47,7 +47,7 @@ class JaqsApi(CDataApi):
         return df_basics[['symbol', 'name', 'list_date', 'delist_date', 'status', 'market', 'currency']]
 
     @classmethod
-    def download_index_cons(cls, idx_code, start_date, end_date):
+    def get_index_cons(cls, idx_code, start_date, end_date):
         """
         下载指数成分股数据
         Parameters:
@@ -58,8 +58,12 @@ class JaqsApi(CDataApi):
             开始日期
         :param end_date: datetime-like, str
             结束日期
-        :return: bool
-            下载成功返回True, 否则返回False
+        :return: pd.DataFrame
+        --------
+            0.index_code: 指数代码, str
+            1.con_code: 成分股代码, str
+            2.in_date: 入选日期, str, 'YYYYMMDD'
+            3.out_date: 剔除日期, str, 'YYYYMMDD'
         """
         code = Utils.code_to_tssymbol(idx_code, True)
         start = Utils.datetimelike_to_str(start_date, False)
@@ -69,16 +73,22 @@ class JaqsApi(CDataApi):
                                           filter='index_code=%s&start_date=%s&end_date=%s' % (code, start, end),
                                           data_format='pandas')
         if msg != '0,':
-            return False
+            return None
         else:
 
-            file_path = '/Volumes/DB/FactorDB/ElementaryFactor/index_cons/%s.csv' % idx_code
-            df_idx_cons.sort_values(by='in_date').to_csv(file_path, index=False)
-            return True
+            # file_path = '/Volumes/DB/FactorDB/ElementaryFactor/index_cons/%s.csv' % idx_code
+            # df_idx_cons.sort_values(by='in_date').to_csv(file_path, index=False)
+            df_idx_cons = df_idx_cons[['index_code', 'symbol', 'in_date', 'out_date']]
+            df_idx_cons.rename(columns={'symbol': 'con_code'}, inplace=True)
+            df_idx_cons.sort_values(by='in_date', inplace=True)
+            return df_idx_cons
 
 
 if __name__ == '__main__':
     # import datetime
     # JaqsApi.download_index_cons('000985', '20050101', datetime.date.today().strftime('%Y%m%d'))
-    stocks = JaqsApi.get_secu_basics()
-    print(stocks.head())
+    # stocks = JaqsApi.get_secu_basics()
+    # print(stocks.head())
+
+    index_cons = JaqsApi.get_index_cons('000905', '20050101', '20180831')
+    print(index_cons.head())

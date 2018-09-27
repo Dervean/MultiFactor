@@ -59,12 +59,17 @@ CYQRP_CT = DottableDict({'db_file': 'AlphaFactor/CYQ/CYQRP/',
                          'listed_days': 90})
 
 # INTRADAYLIQUIDITY日内流动性因子的配置参数
-INTRADAYLIQUIDITY = DottableDict({'db_file': 'AlphaFactor/IntradayLiquidity',
-                                  'days_num': 20,
-                                  'listed_days': 90})
+INTRADAYLIQUIDITY_CT = DottableDict({'db_file': 'AlphaFactor/IntradayLiquidity',
+                                     'days_num': 20,
+                                     'listed_days': 90})
+LIQ1_CT = DottableDict({'db_file': 'AlphaFactor/IntradayLiquidity/liq1'})
+
+LIQ2_CT = DottableDict({'db_file': 'AlphaFactor/IntradayLiquidity/liq2'})
+
+LIQ3_CT = DottableDict({'db_file': 'AlphaFactor/IntradayLiquidity/liq3'})
 
 # alpha因子列表
-ALPHA_FACTORS = ['APM', 'IntradayMomentum', 'CYQRP']
+ALPHA_FACTORS = ['APM', 'IntradayMomentum', 'CYQRP', 'Liq1']
 
 # 因子载荷类型
 FACTORLOADING_TYPE = {'RAW': 'raw',                         # 原始因子载荷

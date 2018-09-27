@@ -713,7 +713,6 @@ def get_alphamodel_data(date, factors=None):
         [2]. 第二个元素为alpha因子收益向量(pd.Series)
              index为因子名称, Series数值为因子收益
     """
-    # 读取alpha因子载荷数据矩阵
     if factors is None:
         factors = alphafactor_ct.ALPHA_FACTORS
     if not isinstance(factors, (str, list)):
@@ -722,7 +721,10 @@ def get_alphamodel_data(date, factors=None):
         factors = [factors]
 
     df_alphafactor_loading = pd.DataFrame()
+    ser_alphafactor_ret = pd.Series()
+    date = Utils.to_date(date)
     for alpha_factor in factors:
+        # 读取alpha因子载荷数据
         factor_loading = _get_factorloading(alpha_factor, date, 'orthogonalized')
         factor_loading.drop(columns='date', inplace=True)
         factor_loading.rename(index=str, columns={'id': 'code', 'factorvalue': alpha_factor}, inplace=True)
@@ -731,14 +733,21 @@ def get_alphamodel_data(date, factors=None):
         else:
             df_alphafactor_loading = pd.merge(left=df_alphafactor_loading, right=factor_loading, how='inner', on='code')
 
-    # 读取alpha
+        # 读取alpha因子收益
+        factor_ret_path = os.path.join(SETTINGS.FACTOR_DB_PATH, eval('alphafactor_ct.'+alpha_factor.upper()+'_CT')['db_file'], 'performance', 'factor_ret.csv')
+        df_factor_ret = pd.read_csv(factor_ret_path, parse_dates=[0], header=0)
+        ser_alphafactor_ret[alpha_factor] = df_factor_ret[df_factor_ret['date'] <= date].iloc[-1]['factor_ret']
 
+    return df_alphafactor_loading, ser_alphafactor_ret
 
 if __name__ == '__main__':
     # pass
-    _calc_alphafactor_loading(start_date='2018-08-31', end_date='2018-08-31', factor_name='IntradayLiquidity', multi_proc=True, test=True)
-    # _calc_Orthogonalized_factorloading(factor_name='CYQRP', start_date='2007-12-28', end_date='2018-08-31', month_end=True, save=True)
-    # _calc_MVPFP(factor_name='CYQRP', start_date='2007-12-28', end_date='2018-08-31', month_end=True, save=True)
+    factor_name = 'Liq3'
+    # _calc_alphafactor_loading(start_date='2018-08-31', end_date='2018-08-31', factor_name='IntradayLiquidity', multi_proc=True, test=True)
+    # _calc_Orthogonalized_factorloading(factor_name=factor_name, start_date='2007-12-28', end_date='2018-08-31', month_end=True, save=True)
+    # _calc_MVPFP(factor_name=factor_name, start_date='2007-12-28', end_date='2018-08-31', month_end=True, save=True)
     # test_alpha_factor(factor_name='SmartMoney', start_date='2017-12-01', end_date='2018-04-30')
     # _calc_mvpfp_performance('IntradayMomentum', '2007-12-28', '2018-08-31')
-    # _calc_mvpfp_summary('CYQRP', start_date='2012-12-31', end_date='2018-08-31', month_end=True)
+    # _calc_mvpfp_summary(factor_name, start_date='2012-12-31', end_date='2018-08-31', month_end=True)
+
+    factor_loading, factor_ret = get_alphamodel_data('2018-08-31')

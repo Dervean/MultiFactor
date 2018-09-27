@@ -24,7 +24,7 @@ logging.basicConfig(level=logging.INFO,
 
 class IntradayLiquidity(Factor):
     """日内流动性因子类"""
-    _db_file = os.path.join(SETTINGS.FACTOR_DB_PATH, alphafactor_ct.INTRADAYLIQUIDITY.db_file)
+    _db_file = os.path.join(SETTINGS.FACTOR_DB_PATH, alphafactor_ct.INTRADAYLIQUIDITY_CT.db_file)
 
     @classmethod
     def _calc_factor_loading(cls, code, calc_date):
@@ -50,7 +50,7 @@ class IntradayLiquidity(Factor):
         # 取得过去90天的交易日序列, 按日期降序排列
         trading_days = Utils.get_trading_days(end=calc_date, ndays=90, ascending=False)
         # 读取个股在过去90个交易日中的最近days_num个交易日的分钟行情数据
-        be_enough, mkt_data = Utils.get_min_mkts_fq(code, trading_days, alphafactor_ct.INTRADAYLIQUIDITY.days_num)
+        be_enough, mkt_data = Utils.get_min_mkts_fq(code, trading_days, alphafactor_ct.INTRADAYLIQUIDITY_CT.days_num)
         if not be_enough:
             return None
         # 读取个股最新的股本数据
@@ -132,8 +132,8 @@ class IntradayLiquidity(Factor):
             # 计算日内各时段流动性因子
             dict_intraday_liquidity = {'date': [], 'id': [], 'liq1': [], 'liq2': [], 'liq3': [], 'liq4': []}
             # 遍历个股, 计算个股日内流动性因子值
-            s = calc_date - datetime.timedelta(days=alphafactor_ct.INTRADAYLIQUIDITY.listed_days)
-            stock_basics = Utils.get_stock_basics(s).iloc[:100]
+            s = calc_date - datetime.timedelta(days=alphafactor_ct.INTRADAYLIQUIDITY_CT.listed_days)
+            stock_basics = Utils.get_stock_basics(s)
 
             if 'multi_proc' not in kwargs:
                 kwargs['multi_proc'] = False
@@ -142,7 +142,7 @@ class IntradayLiquidity(Factor):
                 for _, stock_info in stock_basics.iterrows():
                     liquidity_data = cls._calc_factor_loading(stock_info.symbol, calc_date)
                     if liquidity_data is not None:
-                        logging.debug("[%s] %s's intraday liquidity = (%0.4f,%0.4f,%0.4f,%0.4f)" % (Utils.datetimelike_to_str(calc_date),stock_info.symbol, liquidity_data.liq1, liquidity_data.liq2, liquidity_data.liq3, liquidity_data.liq4))
+                        logging.debug("[%s] %s's intraday liquidity = (%0.4f,%0.4f,%0.4f,%0.4f)" % (Utils.datetimelike_to_str(calc_date), stock_info.symbol, liquidity_data.liq1, liquidity_data.liq2, liquidity_data.liq3, liquidity_data.liq4))
                         dict_intraday_liquidity['id'].append(Utils.code_to_symbol(stock_info.symbol))
                         dict_intraday_liquidity['liq1'].append(round(liquidity_data['liq1'], 6))
                         dict_intraday_liquidity['liq2'].append(round(liquidity_data['liq2'], 6))
