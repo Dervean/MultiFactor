@@ -31,7 +31,7 @@ class SecuTradingStatus(Enum):
     LimitUp = auto()        # 涨停
     LimitDown = auto()      # 跌停
 
-class ConsensusType(object):
+class ConsensusType(Enum):
     """
     一致预期数据类型
     """
@@ -1032,6 +1032,69 @@ class Utils(object):
             return df_ipo_info
 
     @classmethod
+    def get_index_cons(cls, index_code, date):
+        """
+        读取指数成份股数据
+        Parameters:
+        --------
+        :param index_code: str
+            指数代码, e.g: SZ399905
+        :param date: datetime-like, str
+            计算日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :return: pd.DataFrame
+        --------
+            返回指数成份股数据
+            0.date: 日期, str
+            1.code: 成份股代码
+            读取失败返回None
+        """
+        index_code = cls.code_to_symbol(index_code, True)
+        index_cons_path = os.path.join(ct.DB_PATH, ct.INDEX_CONS_PATH, '%s.csv' % index_code)
+        if not os.path.isfile(index_cons_path):
+            return None
+        df_index_cons = pd.read_csv(index_cons_path, header=0)
+
+        date = cls.datetimelike_to_str(date)
+        df_index_cons = df_index_cons[(df_index_cons['in_date'] <= date) & (df_index_cons['out_date'] >= date)]
+        df_index_cons['date'] = date
+        df_index_cons.drop(columns=['in_date', 'out_date'], inplace=True)
+        df_index_cons.reset_index(drop=True, inplace=True)
+        return df_index_cons[['date', 'code']]
+
+    @classmethod
+    def get_index_weight(cls, index_code, date):
+        """
+        取得指数成份股权重数据
+        Parameters:
+        --------
+        :param index_code: str
+            指数代码, e.g: SZ399905
+        :param date: datetime-like, str
+            计算日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :return: pd.DataFrame
+        --------
+            返回指数成份股权重数据
+            0.date: 日期
+            1.code: 成份股代码
+            2.weight: 成份股权重
+            计算失败返回None
+        """
+        df_index_cons = cls.get_index_cons(index_code, date)
+        if df_index_cons is None:
+            return None
+
+        cap_factor_path = os.path.join(ct.DB_PATH, risk_ct.LNCAP_CT.liquidcap_dbfile)
+        df_cap_factor = cls.read_factor_loading(cap_factor_path, cls.datetimelike_to_str(date, dash=False), drop_na=True)
+        df_cap_factor.drop(columns='date', inplace=True)
+        df_cap_factor.rename(columns={'id': 'code', 'factorvalue': 'cap'}, inplace=True)
+
+        df_index_cons = pd.merge(left=df_index_cons, right=df_cap_factor, how='inner', on='code')
+        df_index_cons['weight'] = df_index_cons['cap'] / df_index_cons['cap'].sum()
+        df_index_cons.drop(columns='cap', inplace=True)
+
+        return df_index_cons
+
+    @classmethod
     def trading_status(cls, code, trading_day):
         """
         返回个股在指定交易日的交易状态：正常、停牌、涨停、跌停
@@ -1560,6 +1623,8 @@ if __name__ == '__main__':
     # print(_code_to_symbol('000300.sH'))
     # df_ind_classify = Utils.get_industry_classify('2009-12-31')
     # print(df_ind_classify.head())
+
+    Utils.get_index_weight('399905', '2018-08-31')
 
 
     # 检查缺失的个股行情

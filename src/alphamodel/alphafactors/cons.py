@@ -68,6 +68,8 @@ LIQ2_CT = DottableDict({'db_file': 'AlphaFactor/IntradayLiquidity/liq2'})
 
 LIQ3_CT = DottableDict({'db_file': 'AlphaFactor/IntradayLiquidity/liq3'})
 
+LIQ4_CT = DottableDict({'db_file': 'AlphaFactor/IntradayLiquidity/liq4'})
+
 # alpha因子列表
 ALPHA_FACTORS = ['APM', 'IntradayMomentum', 'CYQRP', 'Liq1']
 
