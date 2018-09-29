@@ -105,8 +105,8 @@ def load_predictedgrowth_data(date=None):
 
 if __name__ == '__main__':
     pass
-    # load_predictedearning_data(201808)
-    # load_predictedgrowth_data(201808)
+    load_predictedearning_data(201809)
+    load_predictedgrowth_data(201809)
 
     # ----------填充predicted earnings数据-----------------
     # start_date = '2018-06-29'

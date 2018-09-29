@@ -551,4 +551,4 @@ if __name__ == '__main__':
     # pass
     # IntradayMomentum.calc_factor_loading(start_date='2013-01-01', end_date='2017-12-31', month_end=True, save=True, synthetic_factor=True)
     # mom_backtest('2013-01-04', '2017-12-31')
-    IntradayMomentum._calc_periodmomentum_ic('2018-07-31', 'month')
+    IntradayMomentum._calc_periodmomentum_ic('2018-08-31', 'month')

@@ -48,11 +48,11 @@ class SmartMoney(Factor):
         # 计算SmartMoney因子载荷值
         if be_enough:
             # 1.计算指标S_t = abs(R_t)/sqrt(V_t), R_t=第t分钟涨跌幅, V_t=第t分钟成交量
-            df_min_mkt['ind_s'] = df_min_mkt.apply(lambda x: abs(x.ret)*10000/math.sqrt(x.volume*100.0) if x.volume > 0 else 0, axis=1)
+            df_min_mkt['ind_s'] = df_min_mkt.apply(lambda x: abs(x.ret)*10000/math.sqrt(x.vol*100.0) if x.vol > 0 else 0, axis=1)
             # 2.降序排列指标S
             df_min_mkt = df_min_mkt.sort_values(by='ind_s', ascending=False)
             # 3.计算累积成交量、累积成交金额
-            df_min_mkt['accum_volume'] = df_min_mkt['volume'].cumsum()
+            df_min_mkt['accum_volume'] = df_min_mkt['vol'].cumsum()
             df_min_mkt['accum_amount'] = df_min_mkt['amount'].cumsum()
             # 4.找到累积成交量占比前20%找到累积成交量占比前20%的交易，视为聪明钱（smart）交易, 那么聪明钱的情绪因子Q=VWAP_{smart}/VWAP_{all}
             # total_volume = df_min_mkt.iloc[df_min_mkt.shape[0]-1]['accum_volume'] * 100
@@ -508,6 +508,6 @@ def smartq_backtest(start, end):
 
 if __name__ == '__main__':
     # 计算SmartQ因子载荷
-    # SmartMoney.calc_factor_loading(start_date='2018-01-01',end_date='2018-01-05', month_end=True, save=True)
+    SmartMoney.calc_factor_loading(start_date='2018-09-01',end_date='2018-09-30', month_end=True, save=True, multi_proc=True)
     # 模拟组合历史回测
-    smartq_backtest('2016-11-19', '2018-01-03')
+    # smartq_backtest('2016-11-19', '2018-01-03')

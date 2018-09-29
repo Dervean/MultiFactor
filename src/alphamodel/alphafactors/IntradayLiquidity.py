@@ -203,3 +203,4 @@ class IntradayLiquidity(Factor):
 
 if __name__ == '__main__':
     pass
+    IntradayLiquidity.calc_factor_loading(start_date='2018-09-01', end_date='2018-09-30', month_end=True, save=True, multi_proc=True)

@@ -71,7 +71,7 @@ LIQ3_CT = DottableDict({'db_file': 'AlphaFactor/IntradayLiquidity/liq3'})
 LIQ4_CT = DottableDict({'db_file': 'AlphaFactor/IntradayLiquidity/liq4'})
 
 # alpha因子列表
-ALPHA_FACTORS = ['APM', 'IntradayMomentum', 'CYQRP', 'Liq1']
+ALPHA_FACTORS = ['APM', 'IntradayMomentum', 'CYQRP', 'Liq1', 'Liq4']
 
 # 因子载荷类型
 FACTORLOADING_TYPE = {'RAW': 'raw',                         # 原始因子载荷

@@ -742,12 +742,12 @@ def get_alphamodel_data(date, factors=None):
 
 if __name__ == '__main__':
     # pass
-    factor_name = 'Liq4'
-    # _calc_alphafactor_loading(start_date='2018-08-31', end_date='2018-08-31', factor_name='IntradayLiquidity', multi_proc=True, test=True)
+    factor_name = 'CYQRP'
+    _calc_alphafactor_loading(start_date='2018-09-01', end_date='2018-09-30', factor_name=factor_name, multi_proc=True, test=False)
     # _calc_Orthogonalized_factorloading(factor_name=factor_name, start_date='2007-12-28', end_date='2018-08-31', month_end=True, save=True)
     # _calc_MVPFP(factor_name=factor_name, start_date='2007-12-28', end_date='2018-08-31', month_end=True, save=True)
     # test_alpha_factor(factor_name='SmartMoney', start_date='2017-12-01', end_date='2018-04-30')
     # _calc_mvpfp_performance('IntradayMomentum', '2007-12-28', '2018-08-31')
     # _calc_mvpfp_summary(factor_name, start_date='2012-12-31', end_date='2018-08-31', month_end=True)
 
-    factor_loading, factor_ret = get_alphamodel_data('2018-08-31')
+    # factor_loading, factor_ret = get_alphamodel_data('2018-08-31')
