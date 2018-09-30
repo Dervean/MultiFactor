@@ -483,6 +483,12 @@ def _calc_mvpfp_performance(factor_name, start_date, end_date):
             mvpfp_port.load_holdings_fromfile(mvpfp_filepath, cancel_tinyweight=True)
         else:
             return
+    elif mvpfp_port.holding_dates[0] > Utils.get_trading_days(start=start_date, ndays=1).iloc[0]:
+        if prior_mvpfp_filename is not None:
+            mvpfp_filepath = os.path.join(mvpfp_path, prior_mvpfp_filename)
+            mvpfp_port.load_holdings_fromfile(mvpfp_filepath, cancel_tinyweight=True)
+        else:
+            return
     # 遍历持仓数据, 计算组合绩效
     df_daily_performance = pd.DataFrame(columns=alphamodel_ct.FACTOR_PERFORMANCE_HEADER['daily_performance'])       # 日度绩效
     df_monthly_performance = pd.DataFrame(columns=alphamodel_ct.FACTOR_PERFORMANCE_HEADER['monthly_performance'])   # 月度绩效
@@ -494,7 +500,7 @@ def _calc_mvpfp_performance(factor_name, start_date, end_date):
     mvpfp_holdings = mvpfp_port.holdings
     prev_holdingdate = curr_holding_date = None
     prevmonth_idx = 0
-    holding_dates = list(mvpfp_holdings.keys())
+    holding_dates = mvpfp_port.holding_dates
     df_daily_performance.loc[0, 'date'] = holding_dates[0]
     end_date = Utils.get_trading_days(end=end_date, ndays=1).iloc[0]
     if end_date > holding_dates[-1]:
@@ -680,8 +686,10 @@ def _save_mvpfp_performance(performance_data, factor_name, performance_type, sav
                 df_performance_data = pd.read_csv(performance_filepath, parse_dates=[0], header=0)
                 df_performance_data = df_performance_data[df_performance_data['date'] <= performance_data.loc[0, 'date']]
                 if not df_performance_data.empty:
-                    performance_data['nav'] *= df_performance_data.loc[0, 'nav']
+                    performance_data['nav'] *= df_performance_data.iloc[-1]['nav']
                     performance_data['accu_ret'] = performance_data['nav'] - 1
+                    if performance_data.loc[0, 'date'] == df_performance_data.iloc[-1]['date']:
+                        performance_data.loc[0, 'daily_ret'] = df_performance_data.iloc[-1]['daily_ret']
             Utils.save_timeseries_data(performance_data, performance_filepath, save_type='a', columns=alphamodel_ct.FACTOR_PERFORMANCE_HEADER['daily_performance'])
         elif performance_type == 'monthly':
             Utils.save_timeseries_data(performance_data, performance_filepath, save_type='a', columns=alphamodel_ct.FACTOR_PERFORMANCE_HEADER['monthly_performance'])
@@ -742,12 +750,12 @@ def get_alphamodel_data(date, factors=None):
 
 if __name__ == '__main__':
     # pass
-    factor_name = 'CYQRP'
-    _calc_alphafactor_loading(start_date='2018-09-01', end_date='2018-09-30', factor_name=factor_name, multi_proc=True, test=False)
-    # _calc_Orthogonalized_factorloading(factor_name=factor_name, start_date='2007-12-28', end_date='2018-08-31', month_end=True, save=True)
-    # _calc_MVPFP(factor_name=factor_name, start_date='2007-12-28', end_date='2018-08-31', month_end=True, save=True)
+    factor_name = 'Liq4'
+    # _calc_alphafactor_loading(start_date='2018-09-01', end_date='2018-09-30', factor_name=factor_name, multi_proc=True, test=False)
+    # _calc_Orthogonalized_factorloading(factor_name=factor_name, start_date='2018-09-28', end_date='2018-09-28', month_end=True, save=True)
+    # _calc_MVPFP(factor_name=factor_name, start_date='2018-09-28', end_date='2018-09-28', month_end=True, save=True)
     # test_alpha_factor(factor_name='SmartMoney', start_date='2017-12-01', end_date='2018-04-30')
-    # _calc_mvpfp_performance('IntradayMomentum', '2007-12-28', '2018-08-31')
-    # _calc_mvpfp_summary(factor_name, start_date='2012-12-31', end_date='2018-08-31', month_end=True)
+    # _calc_mvpfp_performance(factor_name, '2018-09-01', '2018-09-30')
+    _calc_mvpfp_summary(factor_name, start_date='2018-09-01', end_date='2018-09-30', month_end=True)
 
     # factor_loading, factor_ret = get_alphamodel_data('2018-08-31')

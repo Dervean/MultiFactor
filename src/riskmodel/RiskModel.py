@@ -1227,14 +1227,14 @@ if __name__ == '__main__':
     # print(BarraModel._get_StyleFactorloading_matrix('2017-12-29').head())
     # print(BarraModel._get_secu_dailyret('2018-01-02').head())
 
-    # BarraModel.estimate_factor_ret(start_date='2018-07-01', end_date='2018-08-31')
+    # BarraModel.estimate_factor_ret(start_date='2018-09-01', end_date='2018-09-27')
     # print(BarraModel._naive_factor_covmat('2018-06-29'))
-    # BarraModel.calc_factor_covmat(start_date='2018-07-01', end_date='2018-08-31', calc_mode='cov')
-    # BarraModel.calc_spec_varmat(start_date='2018-07-01', end_date='2018-08-31', calc_mode='var')
+    # BarraModel.calc_factor_covmat(start_date='2018-09-01', end_date='2018-09-30', calc_mode='cov')
+    BarraModel.calc_spec_varmat(start_date='2018-09-01', end_date='2018-09-30', calc_mode='var')
 
-    holding_data = load_holding_data('Liq1', 'Liq1_20180831')
-    risk_contribution = BarraModel.risk_contribution(holding_data, '2018-08-31')
-    print(risk_contribution)
+    # holding_data = load_holding_data('Liq1', 'Liq1_20180831')
+    # risk_contribution = BarraModel.risk_contribution(holding_data, '2018-08-31')
+    # print(risk_contribution)
 
     # holding_data = CWeightHolding()
     # mvpfp_filepath = os.path.join(SETTINGS.FACTOR_DB_PATH, 'AlphaFactor/SmartMoney/mvpfp/SmartMoney_20180629.csv')

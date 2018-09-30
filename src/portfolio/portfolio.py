@@ -282,6 +282,14 @@ class CPortfolio(object):
         """持仓数量"""
         return len(self._holdings)
 
+    @property
+    def holding_dates(self):
+        """返回持仓日期列表"""
+        if self.count == 0:
+            return []
+        else:
+            return sorted(list(self._holdings.keys()))
+
     def append_holding(self, holding_data):
         """
         添加持仓数据
