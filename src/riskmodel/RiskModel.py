@@ -325,6 +325,8 @@ class Barra(object):
             [3]. 第三个元素为个股特质波动率方差矩阵(pd.Series)
                  index为个股代码, Series数值为个股对应的特质方差
         """
+        if factors is None:
+            factors = riskfactor_ct.RISK_FACTORS
         # 取得因子暴露矩阵
         df_factorloading = self.get_factorloading_matrix(date, factors=factors)
 
@@ -1230,17 +1232,17 @@ if __name__ == '__main__':
     # BarraModel.estimate_factor_ret(start_date='2018-09-01', end_date='2018-09-27')
     # print(BarraModel._naive_factor_covmat('2018-06-29'))
     # BarraModel.calc_factor_covmat(start_date='2018-09-01', end_date='2018-09-30', calc_mode='cov')
-    BarraModel.calc_spec_varmat(start_date='2018-09-01', end_date='2018-09-30', calc_mode='var')
+    # BarraModel.calc_spec_varmat(start_date='2018-09-01', end_date='2018-09-30', calc_mode='var')
 
     # holding_data = load_holding_data('Liq1', 'Liq1_20180831')
     # risk_contribution = BarraModel.risk_contribution(holding_data, '2018-08-31')
     # print(risk_contribution)
 
-    # holding_data = CWeightHolding()
-    # mvpfp_filepath = os.path.join(SETTINGS.FACTOR_DB_PATH, 'AlphaFactor/SmartMoney/mvpfp/SmartMoney_20180629.csv')
-    # holding_data.from_file(mvpfp_filepath)
-    # risk_contribution = BarraModel.risk_contribution(holding_data, '2018-06-29')
-    # print(risk_contribution)
+    holding_data = CWeightHolding()
+    mvpfp_filepath = os.path.join(SETTINGS.FACTOR_DB_PATH, 'portfolio/opt_port/CSI500_Enhancement/20180928.csv')
+    holding_data.from_file(mvpfp_filepath)
+    risk_contribution = BarraModel.risk_contribution(holding_data, '2018-09-28')
+    print(risk_contribution)
 
     # file_path = '/Volumes/DB/FactorDB/riskmodel/dailyret'
     # for file_name in os.listdir(file_path):
