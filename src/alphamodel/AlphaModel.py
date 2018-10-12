@@ -746,6 +746,7 @@ def get_alphamodel_data(date, factors=None):
         df_factor_ret = pd.read_csv(factor_ret_path, parse_dates=[0], header=0)
         ser_alphafactor_ret[alpha_factor] = df_factor_ret[df_factor_ret['date'] <= date].iloc[-1]['factor_ret']
 
+    df_alphafactor_loading.set_index('code', inplace=True)
     return df_alphafactor_loading, ser_alphafactor_ret
 
 if __name__ == '__main__':
