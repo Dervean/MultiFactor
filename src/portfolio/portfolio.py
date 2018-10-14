@@ -301,6 +301,30 @@ class CPortfolio(object):
         else:
             return sorted(list(self._holdings.keys()))
 
+    def holding_data(self, date):
+        """
+        取得date日期对应的组合持仓数据
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            持仓日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :return: pd.DataFrame
+        --------
+            组合持仓数据, columns = ['date', 'code', 'weight']
+            如果指定日期持仓数据不存在, raise ValueError
+        """
+        date = Utils.to_date(date)
+        if date not in self.holdings:
+            raise ValueError("不存在%s的持仓数据." % Utils.datetimelike_to_str(date))
+        if self.holdingtype == 'weight_holding':
+            df_holding = self.holdings[date].holding
+        elif self.holdingtype == 'port_holding':
+            df_holding = self.holdings[date].holding[['date', 'code', 'weight']]
+        else:
+            raise ValueError("组合持仓类型错误: %s." % self.holdingtype)
+
+        return df_holding
+
     def append_holding(self, holding_data):
         """
         添加持仓数据

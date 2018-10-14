@@ -70,6 +70,53 @@ def port_allocation(portfolio, date, benchmark=None):
     return risk_allocation, alpha_allocation
 
 
+def port_risk_contribution(portfolio, date, benchmark=None):
+    """
+    分析组合的风险因子归因
+    Parameters:
+    --------
+    :param portfolio: CPortfolio类
+        投资组合
+    :param date: datetime-like, str
+        计算日期, e.g: YYYY-MM-DD, YYYYMMDD
+    :param benchmark: str
+        基准代码, 默认为None
+        benchmark=None时, 采用Portfolio.benchmark作为基准
+    :return: pd.DataFrame
+        组合及基准的风险因子归因
+    --------
+    """
+    date = Utils.to_date(date)
+    # 取得组合持仓数据
+    df_port_holding = portfolio.holding_data(date)
+    df_port_holding.drop(columns='date', inplace=True)
+    df_port_holding.rename(index=str, columns={'weight': 'port_weight'}, inplace=True)
+    df_port_holding.set_index('code', inplace=True)
+    # 取得基准持仓数据
+    if benchmark is None:
+        benchmark = portfolio.benchmark
+    if benchmark is None:
+        df_ben_holding = None
+    else:
+        df_ben_holding = Utils.get_index_weight(benchmark, date)
+        if df_ben_holding is None:
+            raise ValueError("无法读取基准%s在%s的权重数据." % (benchmark, Utils.datetimelike_to_str(date)))
+        df_ben_holding.drop(columns='date', inplace=True)
+        df_ben_holding.rename(index=str, columns={'weight': 'ben_weight'})
+        df_ben_holding.set_index('code', inplace=True)
+
+    df_weight = pd.merge(left=df_port_holding, right=df_ben_holding, how='outer', left_index=True, right_index=True)
+    df_weight.fillna(0, inplace=True)
+    arr_port_weight = np.array(df_weight['port_weight'])
+    arr_ben_weight = np.array(df_weight['ben_weight'])
+    # 取得风险模型数据(风险因子暴露矩阵、风险因子协方差矩阵、特质波动率方差矩阵)
+    CRiskModel = Barra()
+    df_riskfactor_loading, arr_risk_covmat, ser_spec_var = CRiskModel.get_riskmodel_data(date)
+
+    arr_riskfactor_loading = np.array(df_riskfactor_loading.loc[:, riskfactor_ct.RISK_FACTORS])
+
+
+
 def _holding_allocation(date, holding_data):
     """
     分析持仓数据的风险因子配置和alpha因子配置
@@ -82,8 +129,8 @@ def _holding_allocation(date, holding_data):
     :return: tuple(pd.Series, pd.Series)
         持仓数据的风险因子配置、alpha因子配置
     --------
-    1.risk_allocation
-    2.alpha_allocation
+    1.risk_allocation: Series的index为风险因子名称
+    2.alpha_allocation: Series的index为alpha因子名称
     """
     if holding_data is None:
         risk_allocation = pd.Series([0]*len(riskfactor_ct.RISK_FACTORS), index=riskfactor_ct.RISK_FACTORS)
