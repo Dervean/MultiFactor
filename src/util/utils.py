@@ -1495,6 +1495,30 @@ class Utils(object):
             else:
                 return '%s.SZ' % code if code[:3] == '399' else '%s.SH' % code
 
+    @classmethod
+    def symbol_to_windcode(cls, symbol):
+        return _symbol_to_windcode(symbol)
+
+    @classmethod
+    def is_filetype(cls, file_path, file_type):
+        """
+        判断给定的文件名是否是指定的后缀类型
+        Parameters:
+        --------
+        :param file_path: str
+            文件的绝对路径
+        :param file_type: str
+            指定的后缀类型
+        :return: bool
+        """
+        if not os.path.isfile(file_path):
+            return False
+        file_name = os.path.basename(file_path)
+        if os.path.splitext(file_name)[1] == '.' + file_type:
+            return True
+        else:
+            return False
+
 
 def _code_to_symbol(code):
     """

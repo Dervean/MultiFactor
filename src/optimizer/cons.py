@@ -21,14 +21,13 @@ CSI500_Enhancement = {'riskfactor_const':                   # 风格因子约束
                            'Size':          (-0.1, 0.1),
                            'Value':         (-0.1, 0.1)},
                       'industry_neutral': True,             # 是否行业中性
-                      'weight_bound': (0.0, 0.01),          # 权重上下限
+                      'weight_bound': (0.0, 0.005),          # 权重上下限
                       'weight_sum': 1.0,                    # 权重之和
                       'secu_num_cons': False,               # 是否约束股票数量
                       'n_max': 200,                         # 股票数量上限
                       'lambda': 0.75,                       # 风险厌恶系数
                       'rho': 0.3,                           # 交易成本惩罚系数
-                      'benchmark': 'SZ399905',              # 基准代码
-                      'holding_path': 'portfolio/opt_port/csi500_enhancement'
+                      'benchmark': 'SZ399905'               # 基准代码
                       }
 
 # 需要优化的投资组合名称

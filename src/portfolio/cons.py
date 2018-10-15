@@ -6,6 +6,9 @@
 # @Author  : YuJun
 # @Email   : yujun_mail@163.com
 
+# 投资组合的相对路径
+PORTFOLIO_WINDPORT_PATH = 'portfolio/wind'
+
 # 投资组合持仓数据的相对路径
 PORTFOLIO_HOLDING_PATH = 'portfolio/holdings'
 

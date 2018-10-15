@@ -13,6 +13,7 @@ from src.riskmodel.RiskModel import Barra
 from src.portfolio.portfolio import CWeightHolding
 import src.optimizer.cons as opt_ct
 import src.riskmodel.riskfactors.cons as riskfactor_ct
+import src.portfolio.cons as portfolio_ct
 import src.util.cons as util_ct
 import src.settings as SETTINGS
 import pandas as pd
@@ -63,7 +64,6 @@ def calc_optimized_portfolio(start_date, end_date=None, port_name=None, month_en
         # 读取alpha模型数据
         df_alphafactor_loading, ser_alphafactor_ret = AlphaModel.get_alphamodel_data(calc_date)
         # 计算个股预期收益向量
-        df_alphafactor_loading.set_index('code', inplace=True)
         ser_secu_ret = (df_alphafactor_loading * ser_alphafactor_ret).sum(axis=1)
         df_secu_ret = ser_secu_ret.to_frame(name='ret')
         df_secu_ret.index.name = 'code'
@@ -77,10 +77,14 @@ def calc_optimized_portfolio(start_date, end_date=None, port_name=None, month_en
         df_spec_var.index.name = 'code'
         df_spec_var.reset_index(inplace=True)
 
+        # 读取下一个交易日的停牌股信息
+        df_suspension_info = Utils.get_suspension_info(Utils.get_trading_days(start=calc_date, ndays=2)[1])
+        suspension_codes = df_suspension_info['symbol'].tolist()
+
         # 合并个股预期收益向量、个股风险因子暴露矩阵、个股特质波动率向量数据
         df_data = pd.merge(left=df_secu_ret, right=df_riskfactor_loading, how='inner', on='code')
         df_data = pd.merge(left=df_data, right=df_spec_var, how='inner', on='code')
-        # df_data.set_index('code', inplace=True)
+        df_data = df_data[[x not in suspension_codes for x in df_data['code'].tolist()]]
         df_secu_ret = df_data[['ret']]                                      # 个股预期收益率矩阵
         df_IndFactor_loading = df_data[riskfactor_ct.INDUSTRY_FACTORS]      # 行业因子载荷矩阵
         df_StyleFactor_loading = df_data[riskfactor_ct.STYLE_RISK_FACTORS]  # 风格因子载荷矩阵
@@ -161,7 +165,7 @@ def calc_optimized_portfolio(start_date, end_date=None, port_name=None, month_en
             opt_prob = cvx.Problem(opt_obj, constraints)
 
             # 组合优化计算
-            opt_prob.solve(verbose=False)
+            opt_prob.solve(verbose=True)
 
             datelabel = Utils.datetimelike_to_str(calc_date, dash=False)
             df_holding = pd.DataFrame({'date': [datelabel]*n, 'code': df_data['code'].tolist(), 'weight': w.value.flatten()})
@@ -170,7 +174,7 @@ def calc_optimized_portfolio(start_date, end_date=None, port_name=None, month_en
             optimized_holding = CWeightHolding()
             optimized_holding.from_dataframe(df_holding)
             if save:
-                holding_path = os.path.join(SETTINGS.FACTOR_DB_PATH, opt_constraints['holding_path'], '%s.csv' % datelabel)
+                holding_path = os.path.join(SETTINGS.FACTOR_DB_PATH, portfolio_ct.PORTFOLIO_HOLDING_PATH, portfolio_name, '%s.csv' % datelabel)
                 optimized_holding.save_data(holding_path)
 
 

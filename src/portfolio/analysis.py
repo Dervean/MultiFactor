@@ -203,7 +203,7 @@ def _holding_allocation(date, holding_data):
 if __name__ == '__main__':
     pass
     port = CPortfolio('weight_holding', 'SZ399905')
-    holdingfile_path = '/Volumes/DB/FactorDB/portfolio/opt_port/CSI500_Enhancement/20180928.csv'
+    holdingfile_path = '/Volumes/DB/FactorDB/portfolio/holdings/CSI500_Enhancement/20180928.csv'
     port.load_holdings_fromfile(holdingfile_path)
     risk_allocation, alpha_allocation = port_allocation(port, '2018-09-28')
     print(risk_allocation)

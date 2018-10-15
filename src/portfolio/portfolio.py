@@ -13,10 +13,7 @@ import src.settings as SETTINGS
 import src.portfolio.cons as portfolio_ct
 import src.util.cons as util_ct
 from src.util.utils import Utils
-# from src.riskmodel.RiskModel import Barra
-# import src.alphamodel.AlphaModel as AlphaModel
-# import src.riskmodel.riskfactors.cons as riskfactor_ct
-# import src.alphamodel.alphafactors.cons as alphafactor_ct
+import csv
 
 
 class CWeightHolding(object):
@@ -368,109 +365,89 @@ class CPortfolio(object):
             raise ValueError("持仓类型必须为'weight_holding'或'port_holding'.")
         holding_data.from_file(holdingfile_path, cancel_tinyweight)
         self.append_holding(holding_data)
-'''
-    def _holding_analysis(self, date, holding_data):
+
+    def load_holdings(self, port_name, cancel_tinyweight=False):
         """
-        对持仓数据从风险因子配置、alpha因子配置及风险预测进行分析
+        从给定组合的持仓文件夹中导入所有持仓数据
         Parameters:
         --------
-        :param date: datetime-like, str
-            计算日期, e.g: YYYY-MM-DD, YYYYMMDD
-        :param holding_data: pd.DataFrame
-            持仓数据, index=个股代码, columns=['weight']
-        :return: 持仓数据的风险因子配置、alpha因子配置及风险预测
-        --------
-        1.risk_allocation:
-        2.alpha_allocation:
-        3.risk_contribution:
+        :param port_name: str
+            组合名称
+        :param cancel_tinyweight: bool
+            是否剔除小权重个股, 默认为False
+        :return:
         """
-        date = Utils.to_date(date)
-        # 取得风险模型数据(风险因子暴露矩阵、风险因子协方差矩阵、特质波动率方差矩阵)
-        CRiskModel = Barra()
-        df_riskfactor_loading, arr_risk_covmat, ser_spec_var = CRiskModel.get_riskmodel_data(date)
-        # 取得alpha模型相关的数据(alpha因子载荷矩阵、alpha因子收益向量)
-        df_alphafactor_loading, ser_alphafactor_ret = AlphaModel.get_alphamodel_data(date)
+        holdings_dir = os.path.join(SETTINGS.FACTOR_DB_PATH, portfolio_ct.PORTFOLIO_HOLDING_PATH, port_name)
+        if not os.path.isdir(holdings_dir):
+            raise ValueError("投资组合: %s 的持仓文件夹不存在, %s" % (port_name, holdings_dir))
+        for holding_file in os.listdir(holdings_dir):
+            holding_file = os.path.join(holdings_dir, holding_file)
+            if not Utils.is_filetype(holding_file, 'csv'):
+                continue
+            self.load_holdings_fromfile(holding_file, cancel_tinyweight)
 
-        df_riskfactor_data = pd.merge(left=holding_data, right=df_riskfactor_loading, how='inner', left_index=True, right_index=True)
-        df_riskfactor_data = pd.merge(left=df_riskfactor_data, right=ser_spec_var.to_frame(name='spec_var'), how='inner', left_index=True, right_index=True)
-        arr_riskfactor_loading = np.array(df_riskfactor_data.loc[:, riskfactor_ct.RISK_FACTORS])
-        arr_weight = np.array(df_riskfactor_data.loc[:, ['weight']])
-        arr_specvar = np.diag(df_riskfactor_data.loc[:, 'spec_var'])
-
-        df_alphafactor_data = pd.merge(left=holding_data, right=df_alphafactor_loading, how='inner', left_index=True, right_index=True)
-        arr_alphafactor_loading = np.array(df_alphafactor_data.loc[:, alphafactor_ct.ALPHA_FACTORS])
-
-        # 持仓数据的风险因子配置
-        risk_allocation = pd.Series(np.dot(arr_weight.T, arr_riskfactor_loading), index=riskfactor_ct.RISK_FACTORS)
-
-        # 持仓数据的风险contribution
-        fsigma = float(np.sqrt(np.linalg.multi_dot([arr_weight.T, arr_riskfactor_loading, arr_risk_covmat, arr_riskfactor_loading.T, arr_weight]) + np.linalg.multi_dot([arr_weight.T, arr_specvar, arr_weight])))
-
-        Psi = np.dot(arr_weight.T, arr_riskfactor_loading).transpose()
-        risk_contribution = pd.Series(1.0 / fsigma * Psi * np.dot(arr_risk_covmat, Psi), index=riskfactor_ct.RISK_FACTORS)
-        fselection = fsigma - risk_contribution.sum()
-        falloction = risk_contribution.sum() - risk_contribution['market']
-        risk_contribution['sigma'] = fsigma
-        risk_contribution['selection'] = fselection
-        risk_contribution['allocation'] = falloction
-        risk_contribution['industry'] = risk_contribution[riskfactor_ct.INDUSTRY_FACTORS].sum()
-        risk_contribution['style'] = risk_contribution[riskfactor_ct.STYLE_RISK_FACTORS].sum()
-
-        # 持仓数据的alpha因子配置
-        alpha_alloction = pd.Series(np.dot(arr_weight.T, arr_alphafactor_loading), index=alphafactor_ct.ALPHA_FACTORS)
-
-        return risk_allocation, alpha_alloction, risk_contribution
-
-
-    def port_analysis(self, date, benchmark=None):
+    def save_to_windport(self, port_name):
         """
-        对组合从风险因子配置、alpha因子配置及风险预测进行分析
+        将组合持仓数据导出为wind系统的投资组合权重格式, 并保存至指定的投资组合路径下
         Parameters:
         --------
-        :param date: datetime-like, str
-            计算日期, e.g: YYYY-MM-DD, YYYYMMDD
-        :param benchmark: str
-            基准代码, 默认为None
-            benchmark=None时, 采用self._benchmark作为基准
-        :return: 组合及基准的风险因子配置、alpha因子配置及风险贡献
-        --------
-        1.risk_allocation:
-        2.alpha_allocation:
-        3.risk_contribution:
+        :param port_name: str
+            组合名称
+        :return:
         """
-        date = Utils.to_date(date)
-        # 判断是否存在指定日期的持仓数据
-        if date not in self.holdings:
-            raise ValueError("不存在%s的持仓数据." % Utils.datetimelike_to_str(date))
-        # 取得持仓数据
-        if 'weight_holding' == self.holdingtype:
-            df_holding = self.holdings[date].holding
-        elif 'port_holding' == self.holdingtype:
-            df_holding = self.holdings[date].holding[['date', 'code', 'weight']]
-        else:
-            raise ValueError("组合持仓类型错误：%s" % self.holdingtype)
-        df_holding.drop(columns='date', inplace=True)
-        df_holding.set_index('code', inplace=True)
-        # 取得基准持仓数据
-        if benchmark is None:
-            benchmark = self.benchmark
-        df_ben_holding = Utils.get_index_weight(benchmark, date)
-        if df_ben_holding is None:
-            raise ValueError("无法读取基准权重数据：%s" % benchmark)
-        df_ben_holding.drop(columns='date', inplace=True)
-        df_ben_holding.set_index('code', inplace=True)
+        windport_datas = [['证券代码', '持仓权重', '成本价格', '调整日期', '证券类型']]
+        for holding_date in self.holding_dates:
+            windport_data = _holdingdata_to_windport(self.holdings[holding_date], Utils.get_next_n_day(holding_date, 1))
+            if len(windport_data) > 0:
+                for row in windport_data[1:]:
+                    windport_datas.append(row)
 
-        port_risk_allocation, port_alpha_allocation, port_risk_contribution = self._holding_analysis(date, df_holding)
-        ben_risk_allocation, ben_alpha_allocation, ben_risk_contribution = self._holding_analysis(date, df_ben_holding)
+        windport_path = os.path.join(SETTINGS.FACTOR_DB_PATH, portfolio_ct.PORTFOLIO_WINDPORT_PATH, port_name, 'windport_holding.csv')
+        with open(windport_path, 'w', newline='', encoding='utf-8') as f:
+            csv_writer = csv.writer(f)
+            csv_writer.writerows(windport_datas)
 
-        risk_allocation = pd.merge(left=port_risk_allocation.to_frame(name='port'), right=ben_risk_allocation.to_frame(name='ben'), how='outer', left_index=True, right_index=True)
-        risk_allocation['active'] = risk_allocation['port'] - risk_allocation['ben']
 
-        alpha_allocation = pd.merge(left=port_alpha_allocation.to_frame(name='port'), right=ben_alpha_allocation.to_frame(name='ben'), how='outer', left_index=True, right_index=True)
-        alpha_allocation['active'] = alpha_allocation['port'] - alpha_allocation['ben']
+def _holdingdata_to_windport(holding, adj_date):
+    """
+    把持仓数据转化为wind系统的投资组合权重格式
+    Parameters:
+    --------
+    :param holding: CWeightHolding类, CPortHolding类
+        持仓数据
+    :param adj_date: datetime-like, str
+        调整日期, e.g: YYYY-MM-DD
+    :return: list of rows
+    --------
+        返回wind的投资组合权重格式, list of row
+        第一行为['证券代码', '持仓权重', '成本价格', '调整日期', '证券类型']
+        第二行开始具体的数据list
+        如:
 
-        return risk_allocation, alpha_allocation
-'''
+        证券代码,持仓权重,成本价格,调整日期,证券类型
+        000008.SZ,0.4219%,10.61,2013-01-04,股票
+        601318.SH,0.4219%,47.59,2013-01-04,股票
+        002536.SZ,0.4219%,14.72,2013-01-04,股票
+        600961.SH,0.4219%,10.24,2013-01-04,股票
+    """
+    if not isinstance(holding, (CWeightHolding, CPortHolding)):
+        raise TypeError("holding的类型必须为CWeightHolding或CPortHolding.")
+
+    windport_rows = [['证券代码', '持仓权重', '成本价格', '调整日期', '证券类型']]
+    holding_data = holding.holding
+    str_date = Utils.datetimelike_to_str(adj_date, dash=True)
+    for _, holding_info in holding_data.iterrows():
+        wind_code = Utils.symbol_to_windcode(holding_info['code'])  # 证券代码
+        str_weight = '%.4f%%' % (holding_info['weight'] * 100)      # 持仓权重
+
+        mkt_data = Utils.get_secu_daily_mkt(holding_info['code'], start=adj_date, fq=False, range_lookup=False)
+        favg_price = mkt_data['amount'] / mkt_data['vol']
+        str_cost = '%.2f' % favg_price                              # 成本价格
+
+        windport_rows.append([wind_code, str_weight, str_cost, str_date, '股票'])
+
+    return windport_rows
+
 
 def load_holding_data(port_name=None, holding_name=None, holding_path=None):
     """
@@ -512,6 +489,6 @@ if __name__ == '__main__':
     # print(holding_data.holding)
 
     port = CPortfolio('weight_holding')
-    holdingfile_path = os.path.join(SETTINGS.FACTOR_DB_PATH, 'portfolio/opt_port/CSI500_Enhancement/20180928.csv')
-    port.load_holdings_fromfile(holdingfile_path)
-    risk_allocation, alpha_allocation = port.port_analysis('2018-09-28', 'SZ399905')
+
+    port.load_holdings('CSI500_Enhancement')
+    port.save_to_windport('CSI500_Enhancement')
