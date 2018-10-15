@@ -317,7 +317,7 @@ class CPortfolio(object):
         if date not in self.holdings:
             raise ValueError("不存在%s的持仓数据." % Utils.datetimelike_to_str(date))
         if self.holdingtype == 'weight_holding':
-            df_holding = self.holdings[date].holding
+            df_holding = self.holdings[date].holding.copy()
         elif self.holdingtype == 'port_holding':
             df_holding = self.holdings[date].holding[['date', 'code', 'weight']]
         else:

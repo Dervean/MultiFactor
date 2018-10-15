@@ -35,15 +35,8 @@ def port_allocation(portfolio, date, benchmark=None):
     2.alpha_allocation
     """
     date = Utils.to_date(date)
-    if date not in portfolio.holdings:
-        raise ValueError("不存在%s的持仓数据." % Utils.datetimelike_to_str(date))
     # 取得持仓数据
-    if portfolio.holdingtype == 'weight_holding':
-        df_holding = portfolio.holdings[date].holding
-    elif portfolio.holdingtype == 'port_holding':
-        df_holding = portfolio.holdings[date].holding[['date', 'code', 'weight']]
-    else:
-        raise ValueError("组合持仓类型错误: %s." % portfolio.holdingtype)
+    df_holding = portfolio.holding_data(date)
     df_holding.drop(columns='date', inplace=True)
     df_holding.set_index('code', inplace=True)
     # 取得基准持仓数据
@@ -102,19 +95,63 @@ def port_risk_contribution(portfolio, date, benchmark=None):
         if df_ben_holding is None:
             raise ValueError("无法读取基准%s在%s的权重数据." % (benchmark, Utils.datetimelike_to_str(date)))
         df_ben_holding.drop(columns='date', inplace=True)
-        df_ben_holding.rename(index=str, columns={'weight': 'ben_weight'})
+        df_ben_holding.rename(index=str, columns={'weight': 'ben_weight'}, inplace=True)
         df_ben_holding.set_index('code', inplace=True)
 
-    df_weight = pd.merge(left=df_port_holding, right=df_ben_holding, how='outer', left_index=True, right_index=True)
-    df_weight.fillna(0, inplace=True)
-    arr_port_weight = np.array(df_weight['port_weight'])
-    arr_ben_weight = np.array(df_weight['ben_weight'])
     # 取得风险模型数据(风险因子暴露矩阵、风险因子协方差矩阵、特质波动率方差矩阵)
     CRiskModel = Barra()
     df_riskfactor_loading, arr_risk_covmat, ser_spec_var = CRiskModel.get_riskmodel_data(date)
 
-    arr_riskfactor_loading = np.array(df_riskfactor_loading.loc[:, riskfactor_ct.RISK_FACTORS])
+    df_weight = pd.merge(left=df_port_holding, right=df_ben_holding, how='outer', left_index=True, right_index=True)
+    # df_weight.fillna(0, inplace=True)
+    df_riskfactor_data = pd.merge(left=df_weight, right=df_riskfactor_loading, how='left', left_index=True, right_index=True)
+    df_riskfactor_data = pd.merge(left=df_riskfactor_data, right=ser_spec_var.to_frame(name='spec_var'), how='left', left_index=True, right_index=True)
+    df_riskfactor_data.fillna(0, inplace=True)
 
+    arr_port_weight = np.array(df_riskfactor_data[['port_weight']])
+    arr_ben_weight = np.array(df_riskfactor_data[['ben_weight']])
+    arr_active_weight = arr_port_weight - arr_ben_weight
+    arr_riskfactor_loading = np.array(df_riskfactor_data.loc[:, riskfactor_ct.RISK_FACTORS])
+    arr_specvar = np.diag(df_riskfactor_data.loc[:, 'spec_var'])
+
+    # 计算组合的risk contribution
+    fsigma = float(np.sqrt(np.linalg.multi_dot([arr_port_weight.T, arr_riskfactor_loading, arr_risk_covmat, arr_riskfactor_loading.T, arr_port_weight]) + np.linalg.multi_dot([arr_port_weight.T, arr_specvar, arr_port_weight])))
+    Psi = np.dot(arr_port_weight.T, arr_riskfactor_loading).transpose()
+    risk_contribution_port = pd.Series((1.0 / fsigma * Psi * np.dot(arr_risk_covmat, Psi)).flatten(), index=riskfactor_ct.RISK_FACTORS)
+    fselection = fsigma - risk_contribution_port.sum()
+    fallocation = risk_contribution_port.sum() - risk_contribution_port['market']
+    risk_contribution_port['sigma'] = fsigma
+    risk_contribution_port['selection'] = fselection
+    risk_contribution_port['allocation'] = fallocation
+    risk_contribution_port['industry'] = risk_contribution_port[riskfactor_ct.INDUSTRY_FACTORS].sum()
+    risk_contribution_port['style'] = risk_contribution_port[riskfactor_ct.STYLE_RISK_FACTORS].sum()
+
+    # 计算基准的risk contribution
+    fsigma = float(np.sqrt(np.linalg.multi_dot([arr_ben_weight.T, arr_riskfactor_loading, arr_risk_covmat, arr_riskfactor_loading.T, arr_ben_weight]) + np.linalg.multi_dot([arr_ben_weight.T, arr_specvar, arr_ben_weight])))
+    Psi = np.dot(arr_ben_weight.T, arr_riskfactor_loading).transpose()
+    risk_contribution_ben = pd.Series((1.0 / fsigma * Psi * np.dot(arr_risk_covmat, Psi)).flatten(), index=riskfactor_ct.RISK_FACTORS)
+    fselection = fsigma - risk_contribution_ben.sum()
+    fallocation = risk_contribution_ben.sum() - risk_contribution_ben['market']
+    risk_contribution_ben['sigma'] = fsigma
+    risk_contribution_ben['selection'] = fselection
+    risk_contribution_ben['allocation'] = fallocation
+    risk_contribution_ben['industry'] = risk_contribution_ben[riskfactor_ct.INDUSTRY_FACTORS].sum()
+    risk_contribution_ben['style'] = risk_contribution_ben[riskfactor_ct.STYLE_RISK_FACTORS].sum()
+
+    # 计算组合相对于基准的risk contribution
+    fsigma = float(np.sqrt(np.linalg.multi_dot([arr_active_weight.T, arr_riskfactor_loading, arr_risk_covmat, arr_riskfactor_loading.T, arr_active_weight]) + np.linalg.multi_dot([arr_active_weight.T, arr_specvar, arr_active_weight])))
+    Psi = np.dot(arr_active_weight.T, arr_riskfactor_loading).transpose()
+    risk_contribution_active = pd.Series((1.0 / fsigma * Psi * np.dot(arr_risk_covmat, Psi)).flatten(), index=riskfactor_ct.RISK_FACTORS)
+    fselection = fsigma - risk_contribution_active.sum()
+    fallocation = risk_contribution_active.sum() - risk_contribution_active['market']
+    risk_contribution_active['sigma'] = fsigma
+    risk_contribution_active['selection'] = fselection
+    risk_contribution_active['allocation'] = fallocation
+    risk_contribution_active['industry'] = risk_contribution_active[riskfactor_ct.INDUSTRY_FACTORS].sum()
+    risk_contribution_active['style'] = risk_contribution_active[riskfactor_ct.STYLE_RISK_FACTORS].sum()
+
+    risk_contribution = pd.DataFrame({'port': risk_contribution_port, 'ben': risk_contribution_ben, 'active': risk_contribution_active})
+    return risk_contribution[['port', 'ben','active']]
 
 
 def _holding_allocation(date, holding_data):
@@ -171,3 +208,6 @@ if __name__ == '__main__':
     risk_allocation, alpha_allocation = port_allocation(port, '2018-09-28')
     print(risk_allocation)
     print(alpha_allocation)
+
+    risk_contribution = port_risk_contribution(port, '2018-09-28')
+    print(risk_contribution)
