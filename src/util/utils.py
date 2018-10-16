@@ -600,6 +600,40 @@ class Utils(object):
             return None
 
     @classmethod
+    def get_secu_cap_data(cls, code, date):
+        """
+        读取个股指定日期的市值数据
+        Parameters:
+        --------
+        :param code: str
+            个股代码, e.g: 600000, SH600000
+        :param date: datetime-like, str
+            日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :return: pd.Series
+            个股市值数据
+        --------
+            pd.Series的index为:
+            0.code: 个股代码
+            1.liquid_cap: 流通市值
+            2.total_cap: 总市值
+            读取失败返回None
+        """
+        code = cls.code_to_symbol(code)
+        secu_cap_path = os.path.join(ct.DB_PATH, ct.SECU_CAP_DATA_PATH, 'secu_cap_%s.csv' % cls.datetimelike_to_str(date, dash=False))
+        if not os.path.isfile(secu_cap_path):
+            raise FileNotFoundError("个股市值数据文件不存在: %s" % secu_cap_path)
+        key = 'secu_cap_%s' % cls.datetimelike_to_str(date, dash=False)
+        df_secu_cap = cls._DataCache.get(key)
+        if df_secu_cap is None:
+            df_secu_cap = pd.read_csv(secu_cap_path, header=0)
+            df_secu_cap = df_secu_cap[['code', 'liquid_cap', 'total_cap']]
+            cls._DataCache.set(key, df_secu_cap)
+
+        if code not in df_secu_cap['code'].tolist():
+            return None
+        return df_secu_cap[df_secu_cap['code'] == code]
+
+    @classmethod
     def get_fin_basic_data(cls, code, date, date_type='report_date'):
         """
         读取个股最新的主要财务指标数据
@@ -1648,8 +1682,9 @@ if __name__ == '__main__':
     # df_ind_classify = Utils.get_industry_classify('2009-12-31')
     # print(df_ind_classify.head())
 
-    Utils.get_index_weight('399905', '2018-08-31')
-
+    # Utils.get_index_weight('399905', '2018-08-31')
+    print(Utils.get_secu_cap_data('600000', '2005-01-05'))
+    print(Utils.get_secu_cap_data('000002', '2005-01-05'))
 
     # 检查缺失的个股行情
     # df_dlisted_stocks = Utils.get_stock_basics('2015-01-05', all=True)

@@ -70,6 +70,10 @@ LIQ3_CT = DottableDict({'db_file': 'AlphaFactor/IntradayLiquidity/liq3'})
 
 LIQ4_CT = DottableDict({'db_file': 'AlphaFactor/IntradayLiquidity/liq4'})
 
+# EPTTM因子的配置参数
+EPTTM_CT = DottableDict({'db_file': 'AlphaFactor/EPTTM',
+                         'listed_days': 90})
+
 # alpha因子列表
 ALPHA_FACTORS = ['APM', 'IntradayMomentum', 'CYQRP', 'Liq1', 'Liq4']
 

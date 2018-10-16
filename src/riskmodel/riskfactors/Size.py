@@ -58,9 +58,10 @@ class LNCAP(Factor):
             return None
         total_share = cap_struct.total - cap_struct.liquid_b - cap_struct.liquid_h
         # 计算总市值的自然对数值
-        lncap = np.log(secu_close * total_share)
+        total_cap = secu_close * total_share
         liquid_cap = secu_close * cap_struct.liquid_a
-        return pd.Series([Utils.code_to_symbol(code), lncap, liquid_cap], index=['code', 'lncap', 'liquid_cap'])
+        lncap = np.log(total_cap)
+        return pd.Series([Utils.code_to_symbol(code), lncap, liquid_cap, total_cap], index=['code', 'lncap', 'liquid_cap', 'total_cap'])
 
     @classmethod
     def _calc_factor_loading_proc(cls, code, calc_date, q):
@@ -82,7 +83,7 @@ class LNCAP(Factor):
         except Exception as e:
             print(e)
         if lncap_data is None:
-            lncap_data = pd.Series([Utils.code_to_symbol(code), np.nan, np.nan], index=['code', 'lncap', 'liquid_cap'])
+            lncap_data = pd.Series([Utils.code_to_symbol(code), np.nan, np.nan, np.nan], index=['code', 'lncap', 'liquid_cap', 'total_cap'])
         q.put(lncap_data)
 
     @classmethod
@@ -123,10 +124,11 @@ class LNCAP(Factor):
             # s = (calc_date - datetime.timedelta(days=risk_ct.LNCAP_CT.listed_days)).strftime('%Y%m%d')
             # stock_basics = all_stock_basics[all_stock_basics.list_date < s]
             s = calc_date - datetime.timedelta(days=risk_ct.LNCAP_CT.listed_days)
-            stock_basics = Utils.get_stock_basics(s, False)
+            stock_basics = Utils.get_stock_basics(s, False).iloc[:10]
             ids = []    # 个股代码list
             lncaps = [] # LNCAP因子值list
             liquid_caps = []    # 流通市值因子list
+            total_caps = []     # 总市值因子list
 
             if 'multi_proc' not in kwargs:
                 kwargs['multi_proc'] = False
@@ -139,10 +141,12 @@ class LNCAP(Factor):
                         ids.append(Utils.code_to_symbol(stock_info.symbol))
                         lncaps.append(np.nan)
                         liquid_caps.append(np.nan)
+                        total_caps.append(np.nan)
                     else:
                         ids.append(lncap_data['code'])
                         lncaps.append(lncap_data['lncap'])
                         liquid_caps.append(lncap_data['liquid_cap'])
+                        total_caps.append(lncap_data['total_cap'])
             else:
                 # 采用多进程并行计算LNCAP因子值
                 q = Manager().Queue()   # 队列, 用于进程间通信, 存储每个进程计算的因子载荷
@@ -156,14 +160,18 @@ class LNCAP(Factor):
                     ids.append(lncap_data['code'])
                     lncaps.append(lncap_data['lncap'])
                     liquid_caps.append(lncap_data['liquid_cap'])
+                    total_caps.append(lncap_data['total_cap'])
 
             date_label = Utils.get_trading_days(start=calc_date, ndays=2)[1]
             dict_lncap = {'date': [date_label]*len(ids), 'id': ids, 'factorvalue': lncaps}
             dict_liquidcap = {'date': [date_label]*len(ids), 'id': ids, 'factorvalue': liquid_caps}
+            dict_secucap = {'date': [date_label]*len(ids), 'code': ids, 'liquid_cap': liquid_caps, 'total_cap': total_caps}
             liquidcap_path = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.LNCAP_CT.liquidcap_dbfile)
+            secucap_path = os.path.join(factor_ct.FACTOR_DB.db_path, risk_ct.LNCAP_CT.secu_cap_dbfile)
             if save:
                 Utils.factor_loading_persistent(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_lncap, ['date', 'id', 'factorvalue'])
                 Utils.factor_loading_persistent(liquidcap_path, Utils.datetimelike_to_str(calc_date, dash=False), dict_liquidcap, ['date', 'id', 'factorvalue'])
+                Utils.factor_loading_persistent(secucap_path, Utils.datetimelike_to_str(calc_date, dash=False), dict_secucap, ['date', 'code', 'liquid_cap', 'total_cap'])
             # 暂停180秒
             # logging.info('Suspending for 180s.')
             # time.sleep(180)
@@ -275,4 +283,4 @@ class Size(Factor):
 if __name__ == '__main__':
     # pass
     # LNCAP.calc_factor_loading(start_date='2017-12-29', end_date=None, month_end=False, save=True, multi_proc=True)
-    Size.calc_factor_loading(start_date='2015-01-05', end_date=None, month_end=False, save=True, multi_proc=True)
+    Size.calc_factor_loading(start_date='2018-10-08', end_date=None, month_end=False, save=True, multi_proc=False)

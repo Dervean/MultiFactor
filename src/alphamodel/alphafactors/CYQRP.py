@@ -188,7 +188,7 @@ class CYQRP(Factor):
             # 保存因子载荷至因子数据库
             if save:
                 cls._save_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_cyq, 'CYQRP', factor_type='raw', columns=['date', 'id', 'factorvalue'])
-                cls._save_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), dict_cyq, 'CYQRP', factor_type='standardized', columns=['date', 'id', 'factorvalue'])
+                cls._save_factor_loading(cls._db_file, Utils.datetimelike_to_str(calc_date, dash=False), df_std_cyq, 'CYQRP', factor_type='standardized', columns=['date', 'id', 'factorvalue'])
             # 休息90秒
             # logging.info('Suspending for 100s.')
             # time.sleep(100)

@@ -25,6 +25,8 @@ MKT_MIN_FQ = 'ElementaryFactor/mkt_1min_FQ'
 MKT_MIN_NOFQ = 'ElementaryFactor/mkt_1min_NoFQ'
 # 股本结构数据相对目录
 CAP_STRUCT = 'ElementaryFactor/cap_struct'
+# 个股市值数据相对目录
+SECU_CAP_DATA_PATH = 'ElementaryFactor/secu_cap'
 # 主要财务指标相对目录
 FIN_BASIC_DATA_PATH = 'ElementaryFactor/fin_data/fin_data_basics'
 # 财务报表摘要相对目录

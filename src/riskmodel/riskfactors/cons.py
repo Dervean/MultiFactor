@@ -15,6 +15,7 @@ SIZE_CT = DottableDict({'db_file': 'RiskFactor/Size/Size',
 
 LNCAP_CT = DottableDict({'db_file': 'RiskFactor/Size/LNCAP/LNCAP',
                          'liquidcap_dbfile': 'RiskFactor/Size/CAP/CAP',
+                         'secu_cap_dbfile': 'ElementaryFactor/secu_cap/secu_cap',    # 个股市值数据相对路径
                          'listed_days': 0})
 
 # BETA风险因子的配置参数

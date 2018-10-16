@@ -64,11 +64,12 @@ FACTOR_DB_DIR = {
                                     'mkt_1min_FQ': None,
                                     'mkt_daily_FQ': None,
                                     'mkt_daily_NoFQ': None,
+                                    'secu_cap': None,
                                     'suspension_info': None
                                     },
                 'portfolio': {
                              'holdings': None,
-                             'opt_port': None
+                             'wind': None
                              },
                 'RiskFactor': {
                               'Beta': {
