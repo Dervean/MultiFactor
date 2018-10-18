@@ -15,7 +15,7 @@ import numpy as np
 import os
 import logging
 
-logging.basicConfig(level=logging.INFO,
+logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 class Factor(object):

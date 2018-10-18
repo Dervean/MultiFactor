@@ -18,7 +18,6 @@ from enum import Enum, auto
 from src.util import cons as ct
 import src.riskmodel.riskfactors.cons as risk_ct
 from src.util.Cache import Cache
-import tushare as ts
 from collections import Iterable
 
 
@@ -631,7 +630,7 @@ class Utils(object):
 
         if code not in df_secu_cap['code'].tolist():
             return None
-        return df_secu_cap[df_secu_cap['code'] == code]
+        return df_secu_cap[df_secu_cap['code'] == code].iloc[0]
 
     @classmethod
     def get_fin_basic_data(cls, code, date, date_type='report_date'):
@@ -753,6 +752,142 @@ class Utils(object):
         ttm_fin_basic_data['DeductedNetProfit'] = fin_basic_data1['DeductedNetProfit'] + fin_basic_data2['DeductedNetProfit'] - fin_basic_data3['DeductedNetProfit']
         ttm_fin_basic_data['NetOperateCashFlow'] = fin_basic_data1['NetOperateCashFlow'] + fin_basic_data2['NetOperateCashFlow'] - fin_basic_data3['NetOperateCashFlow']
         return Series(ttm_fin_basic_data)
+
+    @classmethod
+    def get_fin_yoygrowth_data(cls, code, date):
+        """
+        读取财报数据, 计算个股同比(yoy)增长数据
+        Parameters:
+        --------
+        :param code: str
+            证券代码, e.g: SH600000, 600000
+        :param date: datetime-like, str
+            日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :return: pd.Series
+            个股同比增长指标
+        --------
+            Series的index为:
+            0.BasicEPS: 基本每股收益同比
+            1.MainOperateRevenue: 主营业务收入同比
+            2.MainOperateProfit: 主营业务利润同比
+            3.OperateProfit: 营业利润同比
+            4.TotalProfit: 利润总额同比
+            5.NetProfit: 净利润同比
+            6.DeductedNetProfit: 扣除非经常性损益后净利润同比
+            7.NetOperateCashFlow: 经营活动现金流净额同比
+            计算失败, 返回None
+        """
+        fin_report_date1, fin_report_date2 = cls.get_fin_yoy_dates(date)
+
+        fin_basic_data1 = cls.get_fin_basic_data(code, fin_report_date1, 'report_date')
+        if fin_basic_data1 is None:
+            return None
+        fin_basic_data2 = cls.get_fin_basic_data(code, fin_report_date2, 'report_date')
+        if fin_basic_data2 is None:
+            return None
+
+        fin_yoygrowth_data = {}
+        if np.isnan(fin_basic_data1['BasicEPS']) or np.isnan(fin_basic_data2['BasicEPS']):
+            fin_yoygrowth_data['BasicEPS'] = np.nan
+        else:
+            if abs(fin_basic_data2['BasicEPS']) < ct.TINY_ABS_VALUE:
+                fin_basic_data2['BasicEPS'] = ct.TINY_ABS_VALUE
+            fin_yoygrowth_data['BasicEPS'] = (fin_basic_data1['BasicEPS'] - fin_basic_data2['BasicEPS']) / abs(fin_basic_data2['BasicEPS'])
+
+        if np.isnan(fin_basic_data1['MainOperateRevenue']) or np.isnan(fin_basic_data2['MainOperateRevenue']):
+            fin_yoygrowth_data['MainOperateRevenue'] = np.nan
+        else:
+            if abs(fin_basic_data2['MainOperateRevenue']) < ct.TINY_ABS_VALUE:
+                fin_basic_data2['MainOperateRevenue'] = ct.TINY_ABS_VALUE
+            fin_yoygrowth_data['MainOperateRevenue'] = (fin_basic_data1['MainOperateRevenue'] - fin_basic_data2['MainOperateRevenue']) / abs(fin_basic_data2['MainOperateRevenue'])
+
+        if np.isnan(fin_basic_data1['MainOperateProfit']) or np.isnan(fin_basic_data2['MainOperateProfit']):
+            fin_yoygrowth_data['MainOperateProfit'] = np.nan
+        else:
+            if abs(fin_basic_data2['MainOperateProfit']) < ct.TINY_ABS_VALUE:
+                fin_basic_data2['MainOperateProfit'] = ct.TINY_ABS_VALUE
+            fin_yoygrowth_data['MainOperateProfit'] = (fin_basic_data1['MainOperateProfit'] - fin_basic_data2['MainOperateProfit']) / abs(fin_basic_data2['MainOperateProfit'])
+
+        if np.isnan(fin_basic_data1['OperateProfit']) or np.isnan(fin_basic_data2['OperateProfit']):
+            fin_yoygrowth_data['OperateProfit'] = np.nan
+        else:
+            if abs(fin_basic_data2['OperateProfit']) < ct.TINY_ABS_VALUE:
+                fin_basic_data2['OperateProfit'] = ct.TINY_ABS_VALUE
+            fin_yoygrowth_data['OperateProfit'] = (fin_basic_data1['OperateProfit'] - fin_basic_data2['OperateProfit']) / abs(fin_basic_data2['OperateProfit'])
+
+        if np.isnan(fin_basic_data1['TotalProfit']) or np.isnan(fin_basic_data2['TotalProfit']):
+            fin_yoygrowth_data['TotalProfit'] = np.nan
+        else:
+            if abs(fin_basic_data2['TotalProfit']) < ct.TINY_ABS_VALUE:
+                fin_basic_data2['TotalProfit'] = ct.TINY_ABS_VALUE
+            fin_yoygrowth_data['TotalProfit'] = (fin_basic_data1['TotalProfit'] - fin_basic_data2['TotalProfit']) / abs(fin_basic_data2['TotalProfit'])
+
+        if np.isnan(fin_basic_data1['NetProfit']) or np.isnan(fin_basic_data2['NetProfit']):
+            fin_yoygrowth_data['NetProfit'] = np.nan
+        else:
+            if abs(fin_basic_data2['NetProfit']) < ct.TINY_ABS_VALUE:
+                fin_basic_data2['NetProfit'] = ct.TINY_ABS_VALUE
+            fin_yoygrowth_data['NetProfit'] = (fin_basic_data1['NetProfit'] - fin_basic_data2['NetProfit']) / abs(fin_basic_data2['NetProfit'])
+
+        if np.isnan(fin_basic_data1['DeductedNetProfit']) or np.isnan(fin_basic_data2['DeductedNetProfit']):
+            fin_yoygrowth_data['DeductedNetProfit'] = np.nan
+        else:
+            if abs(fin_basic_data2['DeductedNetProfit']) < ct.TINY_ABS_VALUE:
+                fin_basic_data2['DeductedNetProfit'] = ct.TINY_ABS_VALUE
+            fin_yoygrowth_data['DeductedNetProfit'] = (fin_basic_data1['DeductedNetProfit'] - fin_basic_data2['DeductedNetProfit']) / abs(fin_basic_data2['DeductedNetProfit'])
+
+        if np.isnan(fin_basic_data1['NetOperateCashFlow']) or np.isnan(fin_basic_data2['NetOperateCashFlow']):
+            fin_yoygrowth_data['NetOperateCashFlow'] = np.nan
+        else:
+            if abs(fin_basic_data2['NetOperateCashFlow']) < ct.TINY_ABS_VALUE:
+                fin_basic_data2['NetOperateCashFlow'] = ct.TINY_ABS_VALUE
+            fin_yoygrowth_data['NetOperateCashFlow'] = (fin_basic_data1['NetOperateCashFlow'] - fin_basic_data2['NetOperateCashFlow']) / abs(fin_basic_data2['NetOperateCashFlow'])
+
+        return pd.Series(fin_yoygrowth_data)
+
+    @classmethod
+    def get_fin_singlequarter_basicdata(cls, code, date):
+        """
+        读取财报数据, 计算个股单季度财报摘要数据
+        Parameters:
+        --------
+        :param code: str
+            证券代码, e.g: SH600000, 600000
+        :param date: datetime-like, str
+            日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :return: pd.Series
+            个股单季度财报摘要数据
+        --------
+            单季财报摘要数据Series的index为:
+            0.BasicEPS:基本每股收益（元）
+            1.MainOperateRevenue:主营业务收入（万元）
+            2.MainOperateProfit:主营业务利润（万元）
+            3.OperateProfit:营业利润（万元）
+            4.TotalProfit:利润总额（万元）
+            5.NetProfit:净利润（万元）
+            6.DeductedNetPorfit:扣除非经常性损益后净利润（万元）
+            7.NetOperateCashFlow:经营活动现金流净额（万元）
+            8.CashEquivalentsChg:现金及现金等价物增加额（万元）
+            9.BegTotalAsset:期初总资产（万元）
+            10.EndTotalAsset:期末总资产（万元）
+            11.BegShareHolderEquity:期初归属母公司股东权益（万元）
+            12.EndShareHolderEquity:期末归属母公司股东权益（万元）
+            计算失败, 返回None
+        """
+        fin_report_date1, fin_report_date2 = cls.get_fin_qoq_dates(date)
+
+        fin_basic_data1 = cls.get_fin_basic_data(code, fin_report_date1, 'report_date')
+        if fin_basic_data1 is None:
+            return None
+        fin_basic_data2 = cls.get_fin_basic_data(code, fin_report_date2, 'report_date')
+        if fin_basic_data2 is None:
+            return None
+
+        if fin_report_date1.month == 3:
+            fin_basic_data2[:] = 0.0
+
+        fin_singlequarter_basicdata = {}
+
 
     @classmethod
     def get_fin_summary_data(cls, code, report_date):
@@ -969,6 +1104,50 @@ class Utils(object):
             month = 9
             day = 30
         return datetime.datetime(year, month, day)
+
+    @classmethod
+    def get_fin_yoy_dates(cls, date):
+        """
+        根据给定的日期返回用于计算同比指标的两个财报日期
+        Parameters:
+        --------
+        :param date: datetimke-like, str
+            日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :return: tuple(datetime.datetime, datetime.datetime)
+        --------
+            返回的tuple的第一个元素为当年的财报日期, 第二个元素为前一年的同比财报日期
+        """
+        fin_report_date1 = cls.get_fin_report_date(date)
+        fin_report_date2 = datetime.datetime(fin_report_date1.year-1, fin_report_date1.month, fin_report_date1.day)
+
+        return (fin_report_date1, fin_report_date2)
+
+    @classmethod
+    def get_fin_qoq_dates(cls, date):
+        """
+        根据给定的日期返回用于计算季度环比指标的两个财报日期
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :return: type(datetime.datetime, datetime.datetime)
+        --------
+            返回的tuple的第一个元素为当季的财报日期, 第二个元素为前一季度的财报日期
+        """
+        fin_report_date1 = cls.get_fin_report_date(date)
+
+        if fin_report_date1.month == 3:
+            fin_report_date2 = datetime.datetime(fin_report_date1.year-1, 12, 31)
+        elif fin_report_date1.month == 6:
+            fin_report_date2 = datetime.datetime(fin_report_date1.year, 3, 31)
+        elif fin_report_date1.month == 9:
+            fin_report_date2 = datetime.datetime(fin_report_date1.year, 6, 30)
+        elif fin_report_date1.month == 12:
+            fin_report_date2 = datetime.datetime(fin_report_date1.year, 9, 30)
+        else:
+            raise ValueError("财报日期错误: %s" % cls.datetimelike_to_str(fin_report_date1))
+
+        return (fin_report_date1, fin_report_date2)
 
     @classmethod
     def get_ind_dist(cls, code):

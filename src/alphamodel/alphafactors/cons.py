@@ -74,6 +74,26 @@ LIQ4_CT = DottableDict({'db_file': 'AlphaFactor/IntradayLiquidity/liq4'})
 EPTTM_CT = DottableDict({'db_file': 'AlphaFactor/EPTTM',
                          'listed_days': 90})
 
+# SPTTM因子的配置参数
+SPTTM_CT = DottableDict({'db_file': 'AlphaFactor/SPTTM',
+                         'listed_days': 90})
+
+# OperateRevenueYoY因子的配置参数
+OPERATEREVENUEYOY_CT = DottableDict({'db_file': 'AlphaFactor/OperateRevenueYoY',
+                                     'listed_days': 90})
+
+# OperateProfitYoY因子的配置参数
+OPERATEPROFITYOY_CT = DottableDict({'db_file': 'AlphaFactor/OperateProfitYoY',
+                                    'listed_days': 90})
+
+# NetProfitYoY因子的配置参数
+NETPROFITYOY_CT = DottableDict({'db_file': 'AlphaFactor/NetProfitYoY',
+                                'listed_days': 90})
+
+# OperateCashFlowYoY因子的配置参数
+OPERATECASHFLOWYOY_CT = DottableDict({'db_file': 'AlphaFactor/OperateCashFlowYoY',
+                                      'listed_days': 90})
+
 # alpha因子列表
 ALPHA_FACTORS = ['APM', 'IntradayMomentum', 'CYQRP', 'Liq1', 'Liq4']
 
