@@ -94,6 +94,26 @@ NETPROFITYOY_CT = DottableDict({'db_file': 'AlphaFactor/NetProfitYoY',
 OPERATECASHFLOWYOY_CT = DottableDict({'db_file': 'AlphaFactor/OperateCashFlowYoY',
                                       'listed_days': 90})
 
+# OperateRevenueQYoY因子的配置参数
+OPERATEREVENUEQYOY_CT = DottableDict({'db_file': 'AlphaFactor/Growth/OperateRevenueQYoY',
+                                      'listed_days': 90})
+
+# OperateProfitQYoY因子的配置参数
+OPERATEPROFITQYOY_CT = DottableDict({'db_file': 'AlphaFactor/Growth/OperateProfitQYoY',
+                                     'listed_days': 90})
+
+# NetProfitQYoY因子的配置参数
+NETPROFITQYOY_CT = DottableDict({'db_file': 'AlphaFactor/Growth/NetProfitQYoY',
+                                 'listed_days': 90})
+
+# OperateCashFlowQYoY因子的配置参数
+OPERATECASHFLOWQYOY_CT = DottableDict({'db_file': 'AlphaFactor/Growth/OperateCashFlowQYoY',
+                                       'listed_days': 90})
+
+# OperateRevenueQoQ因子的配置参数
+OPERATEREVENUEQOQ_CT = DottableDict({'db_file': 'AlphaFactor/Growth/OperateRevenueQoQ',
+                                     'listed_days': 90})
+
 # alpha因子列表
 ALPHA_FACTORS = ['APM', 'IntradayMomentum', 'CYQRP', 'Liq1', 'Liq4']
 
