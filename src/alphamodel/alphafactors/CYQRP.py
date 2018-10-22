@@ -196,6 +196,19 @@ class CYQRP(Factor):
 
 
 if __name__ == '__main__':
-    # pass
-    CYQRP.calc_factor_loading(start_date='2018-8-31', end_date='2018-08-31', month_end=True, save=True, multi_proc=False)
+    pass
+    # CYQRP.calc_factor_loading(start_date='2018-8-31', end_date='2018-08-31', month_end=True, save=True, multi_proc=False)
     # CYQ._calc_factor_loading('000722', '2006-12-29')
+
+    # factorloading_dir = os.path.join(SETTINGS.FACTOR_DB_PATH, alphafactor_ct.CYQRP_CT.db_file, 'raw')
+    # for factorloading_file in os.listdir(factorloading_dir):
+    #     factorloading_file = os.path.join(factorloading_dir, factorloading_file)
+    #     if not Utils.is_filetype(factorloading_file, 'csv'):
+    #         continue
+    #     df_factor_loading = pd.read_csv(factorloading_file, header=0)
+    #     df_factor_loading = Utils.normalize_data(df_factor_loading, columns='factorvalue', treat_outlier=True, weight='eq')
+    #     df_factor_loading['factorvalue'] = round(df_factor_loading['factorvalue'], 6)
+    #
+    #     factorloading_file = os.path.join(SETTINGS.FACTOR_DB_PATH, alphafactor_ct.CYQRP_CT.db_file, 'standardized', os.path.basename(factorloading_file))
+    #     df_factor_loading.to_csv(factorloading_file, index=False, columns=['date', 'id', 'factorvalue'], na_rep='NaN')
+

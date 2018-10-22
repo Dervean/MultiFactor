@@ -71,27 +71,27 @@ LIQ3_CT = DottableDict({'db_file': 'AlphaFactor/IntradayLiquidity/liq3'})
 LIQ4_CT = DottableDict({'db_file': 'AlphaFactor/IntradayLiquidity/liq4'})
 
 # EPTTM因子的配置参数
-EPTTM_CT = DottableDict({'db_file': 'AlphaFactor/EPTTM',
+EPTTM_CT = DottableDict({'db_file': 'AlphaFactor/Value/EPTTM',
                          'listed_days': 90})
 
 # SPTTM因子的配置参数
-SPTTM_CT = DottableDict({'db_file': 'AlphaFactor/SPTTM',
+SPTTM_CT = DottableDict({'db_file': 'AlphaFactor/Value/SPTTM',
                          'listed_days': 90})
 
 # OperateRevenueYoY因子的配置参数
-OPERATEREVENUEYOY_CT = DottableDict({'db_file': 'AlphaFactor/OperateRevenueYoY',
+OPERATEREVENUEYOY_CT = DottableDict({'db_file': 'AlphaFactor/Growth/OperateRevenueYoY',
                                      'listed_days': 90})
 
 # OperateProfitYoY因子的配置参数
-OPERATEPROFITYOY_CT = DottableDict({'db_file': 'AlphaFactor/OperateProfitYoY',
+OPERATEPROFITYOY_CT = DottableDict({'db_file': 'AlphaFactor/Growth/OperateProfitYoY',
                                     'listed_days': 90})
 
 # NetProfitYoY因子的配置参数
-NETPROFITYOY_CT = DottableDict({'db_file': 'AlphaFactor/NetProfitYoY',
+NETPROFITYOY_CT = DottableDict({'db_file': 'AlphaFactor/Growth/NetProfitYoY',
                                 'listed_days': 90})
 
 # OperateCashFlowYoY因子的配置参数
-OPERATECASHFLOWYOY_CT = DottableDict({'db_file': 'AlphaFactor/OperateCashFlowYoY',
+OPERATECASHFLOWYOY_CT = DottableDict({'db_file': 'AlphaFactor/Growth/OperateCashFlowYoY',
                                       'listed_days': 90})
 
 # OperateRevenueQYoY因子的配置参数
@@ -114,8 +114,24 @@ OPERATECASHFLOWQYOY_CT = DottableDict({'db_file': 'AlphaFactor/Growth/OperateCas
 OPERATEREVENUEQOQ_CT = DottableDict({'db_file': 'AlphaFactor/Growth/OperateRevenueQoQ',
                                      'listed_days': 90})
 
+# OperateProfitQoQ因子的配置参数
+OPERATEPROFITQOQ_CT = DottableDict({'db_file': 'AlphaFactor/Growth/OperateProfitQoQ',
+                                    'listed_days': 90})
+
+# NetProfitQoQ因子的配置参数
+NETPROFITQOQ_CT = DottableDict({'db_file': 'AlphaFactor/Growth/NetProfitQoQ',
+                                'listed_days': 90})
+
+# OperateCashFlowQoQ因子的配置参数
+OPERATECASHFLOWQOQ_CT = DottableDict({'db_file': 'AlphaFactor/Growth/OperateCashFlowQoQ',
+                                      'listed_days': 90})
+
+# ROE因子的配置参数
+ROE_CT = DottableDict({'db_file': 'AlphaFactor/Quality/ROE',
+                       'listed_days': 90})
+
 # alpha因子列表
-ALPHA_FACTORS = ['APM', 'IntradayMomentum', 'CYQRP', 'Liq1', 'Liq4']
+ALPHA_FACTORS = ['APM', 'IntradayMomentum']
 
 # 因子载荷类型
 FACTORLOADING_TYPE = {'RAW': 'raw',                         # 原始因子载荷
