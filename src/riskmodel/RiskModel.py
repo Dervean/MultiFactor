@@ -29,7 +29,7 @@ import cvxpy as cvx
 from src.util.algo import Algo
 import datetime
 import math
-# from src.portfolio.portfolio import CWeightHolding, CPortHolding, load_holding_data
+from src.portfolio.portfolio import CWeightHolding, CPortHolding, load_holding_data
 
 import time
 
@@ -1158,7 +1158,7 @@ class Barra(object):
 
         nw_specvar.index.name = 'code'
         return nw_specvar
-'''
+
     def risk_contribution(self, holding, date=datetime.date.today(), benchmark=None):
         """
         对给定的持仓数据进行风险归因
@@ -1216,7 +1216,7 @@ class Barra(object):
         risk_contribution['style'] = risk_contribution[riskfactor_ct.STYLE_RISK_FACTORS].sum()      # 风格因子风险贡献
 
         return risk_contribution
-'''
+
 
 if __name__ == '__main__':
     BarraModel = Barra()

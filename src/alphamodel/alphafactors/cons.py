@@ -130,8 +130,20 @@ OPERATECASHFLOWQOQ_CT = DottableDict({'db_file': 'AlphaFactor/Growth/OperateCash
 ROE_CT = DottableDict({'db_file': 'AlphaFactor/Quality/ROE',
                        'listed_days': 90})
 
+# ROEQ因子的配置参数
+ROEQ_CT = DottableDict({'db_file': 'AlphaFactor/Quality/ROEQ',
+                        'listed_days': 90})
+
+# ROA因子的配置参数
+ROA_CT = DottableDict({'db_file': 'AlphaFactor/Quality/ROA',
+                       'listed_days': 90})
+
+# ROEQ因子的配置参数
+ROAQ_CT = DottableDict({'db_file': 'AlphaFactor/Quality/ROAQ',
+                        'listed_days': 90})
+
 # alpha因子列表
-ALPHA_FACTORS = ['APM', 'IntradayMomentum']
+ALPHA_FACTORS = ['APM', 'IntradayMomentum', 'CYQRP']
 
 # 因子载荷类型
 FACTORLOADING_TYPE = {'RAW': 'raw',                         # 原始因子载荷
