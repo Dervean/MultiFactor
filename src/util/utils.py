@@ -230,6 +230,13 @@ class Utils(object):
     utils_trading_days = Series()
 
     @classmethod
+    def _load_trading_calendar(cls):
+        """导入交易日历数据"""
+        calendar_path = os.path.join(ct.DB_PATH, ct.BASIC_INFO_PATH, 'trading_days.csv')
+        df_trading_days = pd.read_csv(calendar_path, parse_dates=[0])
+        Utils.utils_trading_days = df_trading_days['trading_day']
+
+    @classmethod
     def get_trading_days(cls, start=None, end=None, ndays=None, ascending=True):
         """
         取得交易日列表，分三种方式取得
@@ -250,14 +257,8 @@ class Utils(object):
             Series of pandas.Timestamp，交易日列表，默认按交易日升序排列
         """
         if len(Utils.utils_trading_days) == 0:
-            # ts_conn = ts.get_apis()
-            # df_SZZS = ts.bar(code='000001', conn=ts_conn, asset='INDEX')
-            # ts.close_apis(ts_conn)
-            # Utils.utils_trading_days = Series(df_SZZS.index).sort_values()
+            cls._load_trading_calendar()
 
-            calendar_path = os.path.join(ct.DB_PATH, ct.BASIC_INFO_PATH, 'trading_days.csv')
-            df_trading_days = pd.read_csv(calendar_path, parse_dates=[0])
-            Utils.utils_trading_days = df_trading_days['trading_day']
         if start is not None:
             start = cls.to_date(start)
         if end is not None:
@@ -318,6 +319,33 @@ class Utils(object):
             return trading_days.iloc[(ndays-1)]
 
     @classmethod
+    def get_prevyears_corresdate(cls, date, years, date_type='calendar'):
+        """
+        取得几年前的相应的交易日或日历日
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :param years: int
+            过去N年
+        :param date_type: str
+            日期类型, 'calendar'=日历日, 'trading'=交易日
+        :return: datetime.datetime
+        """
+        date = cls.to_date(date)
+        _, monthrange = calendar.monthrange(date.year-years, date.month)
+        prev_date = datetime.datetime(date.year-years, date.month, date.day if date.day < monthrange else monthrange)
+
+        if 'calendar' == date_type:
+            prev_tradingday = cls.get_trading_days(end=prev_date, ndays=1)[0]
+        elif 'trading' == date_type:
+            prev_tradingday = prev_date
+        else:
+            raise ValueError("日期类型错误: date_type = %s" % date_type)
+
+        return prev_tradingday.to_pydatetime()
+
+    @classmethod
     def is_month_end(cls, trading_day):
         """
         是否是月末的交易日
@@ -350,6 +378,22 @@ class Utils(object):
                 return False
             else:
                 return True
+
+    @classmethod
+    def is_trading_day(cls, date):
+        """
+        给定的日期是否为交易日
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :return: bool
+        """
+        if len(cls.utils_trading_days) == 0:
+            cls._load_trading_calendar()
+
+        date = cls.to_date(date)
+        return date in cls.utils_trading_days.dt.to_pydatetime()
 
     @classmethod
     def next_month(cls, date):
@@ -2055,13 +2099,15 @@ if __name__ == '__main__':
     # print(_code_to_symbol('000300.sH'))
     # df_ind_classify = Utils.get_industry_classify('2009-12-31')
     # print(df_ind_classify.head())
+    # print(Utils.get_prevyears_tradingday('2016-02-29', 1))
+    print(Utils.is_trading_day('2018-10-27'))
 
     # Utils.get_index_weight('399905', '2018-08-31')
     # print(Utils.get_secu_cap_data('600000', '2005-01-05'))
     # print(Utils.get_secu_cap_data('000002', '2005-01-05'))
 
     # print(Utils.get_fin_qyoygrowth_data('600000', '2018-09-28'))
-    print(Utils.get_fin_qoqgrowth_data('600000', '2018-09-28'))
+    # print(Utils.get_fin_qoqgrowth_data('600000', '2018-09-28'))
 
     # 检查缺失的个股行情
     # df_dlisted_stocks = Utils.get_stock_basics('2015-01-05', all=True)

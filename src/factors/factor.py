@@ -205,7 +205,7 @@ class Factor(object):
         :param db_file: str
             因子载荷数据文件路径(绝对路径)
         :param str_key: str
-            键值, 一般为日期, e.g: YYYY-MM-DD, YYYYMMDD
+            键值, 一般为日期, e.g: YYYYMMDD
         :param factor_name: str, 默认为None
             因子名称
         :param factor_type: str, 默认为None

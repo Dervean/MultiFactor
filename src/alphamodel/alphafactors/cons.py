@@ -134,6 +134,18 @@ ROE_CT = DottableDict({'db_file': 'AlphaFactor/Quality/ROE',
 ROEQ_CT = DottableDict({'db_file': 'AlphaFactor/Quality/ROEQ',
                         'listed_days': 90})
 
+# ROEYoY因子的配置参数
+ROEYOY_CT = DottableDict({'db_file': 'AlphaFactor/Quality/ROEYoY',
+                          'listed_days': 90})
+
+# ROEQYoY因子的配置参数
+ROEQYOY_CT = DottableDict({'db_file': 'AlphaFactor/Quality/ROEQYoY',
+                           'listed_days': 90})
+
+# ROEQoQ因子的配置参数
+ROEQOQ_CT = DottableDict({'db_file': 'AlphaFactor/Quality/ROEQoQ',
+                          'listed_days': 90})
+
 # ROA因子的配置参数
 ROA_CT = DottableDict({'db_file': 'AlphaFactor/Quality/ROA',
                        'listed_days': 90})
@@ -143,7 +155,7 @@ ROAQ_CT = DottableDict({'db_file': 'AlphaFactor/Quality/ROAQ',
                         'listed_days': 90})
 
 # alpha因子列表
-ALPHA_FACTORS = ['APM', 'IntradayMomentum', 'CYQRP']
+ALPHA_FACTORS = ['APM', 'IntradayMomentum', 'CYQRP', 'Liq1']
 
 # 因子载荷类型
 FACTORLOADING_TYPE = {'RAW': 'raw',                         # 原始因子载荷

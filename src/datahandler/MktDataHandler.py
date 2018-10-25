@@ -288,6 +288,7 @@ def calc_suspension_info(date):
     suspension_info_path = os.path.join(SETTINGS.FACTOR_DB_PATH, cfg.get('suspension_info', 'info_path'), '{}.csv'.format(Utils.datetimelike_to_str(date, dash=False)))
     df_stock_basics.to_csv(suspension_info_path, index=False, encoding=SETTINGS.DATA_ENCODING_TYPE)
 
+
 def calc_future_ret(date, ndays):
     """
     计算date日期ndays个交易日前个股的未来1至ndays天的各个区间收益率数据
@@ -323,6 +324,48 @@ def calc_future_ret(date, ndays):
     cfg.read('config.ini')
     future_ret_path = os.path.join(SETTINGS.FACTOR_DB_PATH, cfg.get('future_ret', 'ret_path'), '{}.csv'.format(Utils.datetimelike_to_str(trading_days_series[0], dash=False)))
     df_future_ret.to_csv(future_ret_path, index=False, encoding=SETTINGS.DATA_ENCODING_TYPE)
+
+
+def calc_monthly_accuret(start_date, end_date=None):
+    """
+    计算个股自月初累积的收益率数据
+    Parameters:
+    --------
+    :param start_date: datetime-like, str
+        开始日期, e.g: YYYY-MM-DD, YYYYMMDD
+    :param end_date: datetime-like, str
+        结束日期, e.g: YYYY-MM-DD, YYYYMMDD
+    :return: 累计收益数据保存至数据库
+    --------
+        累计收益率数据格式为pd.DataFrame
+        index为个股代码
+        columns为日期(YYYYMMDD)
+    """
+    start_date = Utils.to_date(start_date)
+    if end_date is not None:
+        end_date = Utils.to_date(end_date)
+        trading_days_series = Utils.get_trading_days(start=start_date, end=end_date)
+    else:
+        if not Utils.is_trading_day(start_date):
+            return
+        else:
+            trading_days_series = Utils.get_trading_days(start=start_date, end=start_date)
+
+    for calc_date in trading_days_series:
+        stock_basics = Utils.get_stock_basics(calc_date)
+        month_beg_date = datetime.datetime(calc_date.year, calc_date.month, 1)
+
+        # 遍历个股, 计算自月初的累积收益率
+        ser_accuret = pd.Series(name=Utils.datetimelike_to_str(calc_date, dash=False))
+        for _, stock_info in stock_basics.iterrows():
+            secu_accuret = Utils.calc_interval_ret(secu_code=stock_info.symbol, start=month_beg_date, end=calc_date)
+            if secu_accuret is not None:
+                ser_accuret[stock_info.symbol] = secu_accuret
+            else:
+                ser_accuret[stock_info.symbol] = 0
+
+        # 读取当月的
+
 
 if __name__ == '__main__':
     pass
