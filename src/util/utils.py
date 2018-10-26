@@ -226,6 +226,16 @@ class Utils(object):
             interval_ret = None
         return interval_ret
 
+    @classmethod
+    def calc_interval_ret_proc(cls, secu_code, start, end, q):
+        """多进程计算证券区间收益率"""
+        print('[%s] Calc accu-ret of %s.' % (Utils.datetimelike_to_str(end), secu_code))
+        interval_ret = cls.calc_interval_ret(secu_code, start, end)
+        if interval_ret is None:
+            interval_ret = 0
+        interval_ret_data = pd.Series([secu_code, interval_ret], index=['code', 'interval_ret'])
+        q.put(interval_ret_data)
+
     # 交易日序列静态变量，Series
     utils_trading_days = Series()
 
@@ -1590,6 +1600,40 @@ class Utils(object):
                             return SecuTradingStatus.Normal
         else:
             return SecuTradingStatus.Suspend
+
+    @classmethod
+    def get_accuret_data(cls, date, data_type='day'):
+        """
+        读取个股自月初的累积收益率数据
+        Parameters:
+        --------
+        :param date: datetime-like, str
+            日期, e.g: YYYY-MM-DD, YYYYMMDD
+        :param data_type: str
+            返回的数据类型, 'day'=返回一天的数据, 'month'=返回一个月的数据
+        :return: pd.DataFrame
+        --------
+            个股自月初的累积收益率数据
+            index为个股代码
+            columns为日期(YYYYMMDD)
+
+            读取失败, 返回None
+        """
+        date = cls.to_date(date)
+        accu_ret_path = os.path.join(ct.DB_PATH, ct.ACCU_RET_PATH, '{}.csv'.format(date.year*100+date.month))
+        if not os.path.exists(accu_ret_path):
+            return None
+        accu_ret_data = pd.read_csv(accu_ret_path, header=0, index_col=0)
+        if 'day' == data_type:
+            str_date = cls.datetimelike_to_str(date, dash=False)
+            if str_date not in accu_ret_data.columns:
+                return None
+            else:
+                return accu_ret_data[[str_date]]
+        elif 'month' == data_type:
+            return accu_ret_data
+        else:
+            raise ValueError("给定的数据类型错误: data_type=%s, 应为%s或%s." % (data_type, 'day', 'month'))
 
     @classmethod
     def factor_loading_persistent(cls, db_file, str_key, dict_factor_loading, columns=None):

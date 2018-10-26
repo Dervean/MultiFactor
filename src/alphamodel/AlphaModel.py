@@ -755,7 +755,7 @@ def get_alphamodel_data(date, factors=None):
 
 if __name__ == '__main__':
     # pass
-    factor_name = 'Liq3'
+    factor_name = 'Liq4'
     # _calc_alphafactor_loading(start_date='2007-12-01', end_date='2018-09-28', factor_name=factor_name, multi_proc=True, test=True)
     # _calc_Orthogonalized_factorloading(factor_name=factor_name, start_date='2007-12-28', end_date='2018-09-28', month_end=True, save=True)
     _calc_MVPFP(factor_name=factor_name, start_date='2007-12-28', end_date='2018-09-28', month_end=True, save=True)

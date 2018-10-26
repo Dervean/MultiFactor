@@ -13,6 +13,7 @@ import pandas as pd
 import numpy as np
 from src.util.utils import Utils, SecuTradingStatus
 import src.settings as SETTINGS
+from multiprocessing import Pool, Manager
 
 
 def load_mkt_1min(tm, tmtype):
@@ -352,19 +353,47 @@ def calc_monthly_accuret(start_date, end_date=None):
             trading_days_series = Utils.get_trading_days(start=start_date, end=start_date)
 
     for calc_date in trading_days_series:
+        print('Calc accu ret at %s.' % Utils.datetimelike_to_str(calc_date))
         stock_basics = Utils.get_stock_basics(calc_date)
         month_beg_date = datetime.datetime(calc_date.year, calc_date.month, 1)
 
         # 遍历个股, 计算自月初的累积收益率
         ser_accuret = pd.Series(name=Utils.datetimelike_to_str(calc_date, dash=False))
-        for _, stock_info in stock_basics.iterrows():
-            secu_accuret = Utils.calc_interval_ret(secu_code=stock_info.symbol, start=month_beg_date, end=calc_date)
-            if secu_accuret is not None:
-                ser_accuret[stock_info.symbol] = secu_accuret
-            else:
-                ser_accuret[stock_info.symbol] = 0
+        ser_accuret.index.name = 'code'
+        if not SETTINGS.CONCURRENCY_ON:
+            for _, stock_info in stock_basics.iterrows():
+                print('[%s] Calc accu-ret of %s.' % (Utils.datetimelike_to_str(calc_date), stock_info.symbol))
+                secu_accuret = Utils.calc_interval_ret(secu_code=stock_info.symbol, start=month_beg_date, end=calc_date)
+                if secu_accuret is not None:
+                    ser_accuret[stock_info.symbol] = round(secu_accuret, 6)
+                else:
+                    ser_accuret[stock_info.symbol] = 0
+        else:
+            q = Manager().Queue()
+            p = Pool(SETTINGS.CONCURRENCY_KERNEL_NUM)
+            for _, stock_info in stock_basics.iterrows():
+                p.apply_async(Utils.calc_interval_ret_proc, args=(stock_info.symbol, month_beg_date, calc_date, q,))
+            p.close()
+            p.join()
+            while not q.empty():
+                accuret_data = q.get(True)
+                ser_accuret[accuret_data['code']] = round(accuret_data['interval_ret'], 6)
 
-        # 读取当月的
+        # 读取当月的个股累计收益率数据, 并合并数据
+        df_accuret_data = Utils.get_accuret_data(calc_date, data_type='month')
+        if df_accuret_data is None:
+            df_accuret_data = ser_accuret.to_frame()
+        else:
+            df_accuret_data = pd.merge(left=df_accuret_data, right=ser_accuret.to_frame(), how='outer', left_index=True,
+                                       right_index=True)
+            df_accuret_data.fillna(0, inplace=True)
+
+        # 保存数据
+        cfg = ConfigParser()
+        cfg.read('config.ini')
+        accuret_path = os.path.join(SETTINGS.FACTOR_DB_PATH, cfg.get('accu_ret', 'accu_ret_path'),
+                                    '{}.csv'.format(calc_date.year*100+calc_date.month))
+        df_accuret_data.to_csv(accuret_path, index=True, encoding=SETTINGS.DATA_ENCODING_TYPE)
 
 
 if __name__ == '__main__':
@@ -375,4 +404,5 @@ if __name__ == '__main__':
 
     # calc_suspension_info('2015-01-05')
 
-    calc_future_ret('2018-06-29', 5)
+    # calc_future_ret('2018-06-29', 5)
+    calc_monthly_accuret('2005-01-01', '2018-10-26')

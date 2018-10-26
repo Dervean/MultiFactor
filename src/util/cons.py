@@ -39,6 +39,8 @@ IPO_INFO_PATH = 'ElementaryFactor/ipo_info'
 CONSENSUS_PATH = 'ElementaryFactor/consensus_data'
 # 指数成份股数据相对目录
 INDEX_CONS_PATH = 'ElementaryFactor/index_cons'
+# 个股累积收益率数据相对目录
+ACCU_RET_PATH = 'ElementaryFactor/accu_ret'
 
 # 日行情复权数据的表头
 MKT_DAILY_FQ_HEADER = ['code', 'date', 'open', 'high', 'low', 'close', 'vol', 'amount', 'turnover1', 'turnover2', 'factor']
